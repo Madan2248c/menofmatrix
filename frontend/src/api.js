@@ -1,4 +1,6 @@
-const BASE = '/api';
+// Use import.meta.env.VITE_API_URL in production (deployed backend),
+// fall back to same-origin /api which Vite proxies to localhost:4000 in dev.
+const BASE = import.meta.env.VITE_API_URL || '/api';
 
 async function request(path, options = {}) {
   const token = localStorage.getItem('token');
