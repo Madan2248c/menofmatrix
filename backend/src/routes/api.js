@@ -168,7 +168,7 @@ router.get('/automation/rules', requireOwner, async (req, res) => {
 });
 
 router.post('/automation/rules', requireOwner, async (req, res) => {
-  const { accountId, name, keywords, action, messageTemplate } = req.body || {};
+  const { accountId, name, keywords, action, messageTemplate, postId } = req.body || {};
   const resolvedAccountId = accountId ? Number(accountId) : await getFirstAccountId();
   if (!resolvedAccountId) return res.status(400).json({ error: 'No accounts connected' });
   if (!name || !Array.isArray(keywords) || !keywords.length) {
@@ -182,8 +182,9 @@ router.post('/automation/rules', requireOwner, async (req, res) => {
       accountId: resolvedAccountId,
       name,
       keywords,
-      action: action || 'reply',
+      action: action || 'dm',
       messageTemplate: messageTemplate || '',
+      postId: postId || null,
     });
     res.json({ data: rule });
   } catch (err) {

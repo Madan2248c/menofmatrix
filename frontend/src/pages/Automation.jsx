@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api';
 import { useAccounts } from '../context/AccountContext';
 
-const emptyForm = { name: '', keywords: '', action: 'reply', messageTemplate: '' };
+const emptyForm = { name: '', keywords: '', action: 'dm', messageTemplate: '', postId: '' };
 
 export default function Automation() {
   const { selectedId } = useAccounts();
   const [rules, setRules] = useState([]);
+  const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -17,8 +18,12 @@ export default function Automation() {
   const load = useCallback(async (accountId) => {
     setLoading(true);
     try {
-      const { data } = await api.automationRules(accountId);
-      setRules(data || []);
+      const [{ data: ruleData }, { data: postData }] = await Promise.all([
+        api.automationRules(accountId),
+        api.posts({ account_id: accountId, limit: 100 }),
+      ]);
+      setRules(ruleData || []);
+      setPosts(postData || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -29,6 +34,13 @@ export default function Automation() {
   useEffect(() => {
     load(selectedId);
   }, [selectedId, load]);
+
+  const postLabel = (postId) => {
+    if (!postId) return 'All posts';
+    const p = posts.find((x) => x.id === postId);
+    if (!p) return `Post ${postId}`;
+    return p.caption ? p.caption.slice(0, 40) : `Post ${postId}`;
+  };
 
   const createRule = async (e) => {
     e.preventDefault();
@@ -42,6 +54,7 @@ export default function Automation() {
         keywords,
         action: form.action,
         messageTemplate: form.messageTemplate,
+        postId: form.postId || null,
       });
       setForm(emptyForm);
       load(selectedId);
@@ -110,9 +123,20 @@ export default function Automation() {
             value={form.action}
             onChange={(e) => setForm({ ...form, action: e.target.value })}
           >
+            <option value="dm">Private DM (recommended)</option>
             <option value="reply">Public reply</option>
-            <option value="dm">Private DM</option>
             <option value="both">Public reply + DM</option>
+          </select>
+          <select
+            value={form.postId}
+            onChange={(e) => setForm({ ...form, postId: e.target.value })}
+          >
+            <option value="">All posts (any comment matching the keyword)</option>
+            {posts.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.caption ? p.caption.slice(0, 60) : `Post ${p.id}`}
+              </option>
+            ))}
           </select>
           <textarea
             rows={3}
@@ -138,6 +162,7 @@ export default function Automation() {
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Post</th>
                 <th>Keywords</th>
                 <th>Action</th>
                 <th>Template</th>
@@ -149,6 +174,7 @@ export default function Automation() {
               {rules.map((r) => (
                 <tr key={r.id}>
                   <td>{r.name}</td>
+                  <td>{postLabel(r.post_id)}</td>
                   <td>{(r.trigger_keywords || []).join(', ')}</td>
                   <td>{r.action}</td>
                   <td style={{ maxWidth: 260 }}>{r.message_template}</td>

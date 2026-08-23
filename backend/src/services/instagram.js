@@ -52,8 +52,8 @@ const num = (insights, name) =>
  */
 export async function fetchMediaInsights(accountId, mediaId, productType) {
   const metricByType = {
-    FEED: 'likes,comments,shares,saves,reach,views,total_interactions',
-    REELS: 'likes,comments,saves,reach,views,total_interactions',
+    FEED: 'likes,comments,shares,saved,reach,views,total_interactions',
+    REELS: 'likes,comments,saved,reach,views,total_interactions',
     STORY: 'reach,replies,taps_forward,taps_back,exits,views',
   };
   try {
@@ -64,7 +64,7 @@ export async function fetchMediaInsights(accountId, mediaId, productType) {
       like_count: num(insights, 'likes'),
       comments_count: num(insights, 'comments'),
       shares: num(insights, 'shares'),
-      saves: num(insights, 'saves'),
+      saves: num(insights, 'saved'),
       reach: num(insights, 'reach'),
       views: num(insights, 'views') || num(insights, 'plays'),
       total_interactions: num(insights, 'total_interactions'),

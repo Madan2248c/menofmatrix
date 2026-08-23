@@ -52,11 +52,11 @@ export async function listRules(accountId) {
   return rows;
 }
 
-export async function createRule({ accountId, name, keywords, action, messageTemplate }) {
+export async function createRule({ accountId, name, keywords, action, messageTemplate, postId }) {
   const { rows } = await query(
-    `INSERT INTO automation_rules (account_id, name, trigger_keywords, action, message_template)
-     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-    [accountId, name, keywords, action, messageTemplate]
+    `INSERT INTO automation_rules (account_id, name, trigger_keywords, action, message_template, post_id)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+    [accountId, name, keywords, action, messageTemplate, postId || null]
   );
   return rows[0];
 }
@@ -103,11 +103,12 @@ const fillTemplate = (template, ctx) =>
 /** Run automation for one account (or all). Returns a summary. */
 export async function runAutomation(accountId = null) {
   const rules = await listRules(accountId);
-  const enabled = rules.filter((r) => r.enabled);
+  // Post-specific rules take precedence over account-wide (post_id IS NULL) rules.
+  const enabled = rules.filter((r) => r.enabled).sort((a, b) => (a.post_id ? 0 : 1) - (b.post_id ? 0 : 1));
   if (!enabled.length) return { rules: 0, matches: 0, actions: 0, failures: [] };
 
   const { rows: pending } = await query(
-    `SELECT c.id AS comment_id, c.username, c.text, c.account_id
+    `SELECT c.id AS comment_id, c.username, c.text, c.account_id, c.post_id
      FROM comments c
      WHERE NOT EXISTS (
        SELECT 1 FROM automation_actions aa
@@ -125,6 +126,7 @@ export async function runAutomation(accountId = null) {
   for (const comment of pending) {
     const text = (comment.text || '').toLowerCase();
     const appliedRule = enabled.find((r) =>
+      (!r.post_id || r.post_id === comment.post_id) &&
       (r.trigger_keywords || []).some((k) => k && text.includes(String(k).toLowerCase()))
     );
     if (!appliedRule) continue;
