@@ -11,7 +11,14 @@ const app = express();
 // Trust Vercel's proxy so req.protocol/ips are correct
 app.set('trust proxy', true);
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
+app.use(
+  cors({
+    origin: (process.env.CORS_ORIGIN || '*')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  })
+);
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
