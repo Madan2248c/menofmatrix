@@ -5,6 +5,7 @@ import { query } from '../config/db.js';
 import { listAccounts, getFirstAccountId, getAccount, deleteAccount } from '../services/tokenStore.js';
 import { fetchStories } from '../services/instagram.js';
 import { syncAll } from '../services/syncService.js';
+import { listRules, createRule, deleteRule, runAutomation } from '../services/automationService.js';
 
 const router = Router();
 
@@ -153,6 +154,52 @@ router.delete('/accounts/:id', requireOwner, async (req, res) => {
   try {
     await deleteAccount(Number(req.params.id));
     res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------- Comment-to-DM automation ----------
+
+router.get('/automation/rules', requireOwner, async (req, res) => {
+  const accountId = req.query.account_id ? Number(req.query.account_id) : null;
+  const data = await listRules(accountId);
+  res.json({ data });
+});
+
+router.post('/automation/rules', requireOwner, async (req, res) => {
+  const { accountId, name, keywords, action, messageTemplate } = req.body || {};
+  const resolvedAccountId = accountId ? Number(accountId) : await getFirstAccountId();
+  if (!resolvedAccountId) return res.status(400).json({ error: 'No accounts connected' });
+  if (!name || !Array.isArray(keywords) || !keywords.length) {
+    return res.status(400).json({ error: 'name and keywords[] are required' });
+  }
+  if (action && !['reply', 'dm', 'both'].includes(action)) {
+    return res.status(400).json({ error: "action must be 'reply', 'dm', or 'both'" });
+  }
+  try {
+    const rule = await createRule({
+      accountId: resolvedAccountId,
+      name,
+      keywords,
+      action: action || 'reply',
+      messageTemplate: messageTemplate || '',
+    });
+    res.json({ data: rule });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/automation/rules/:id', requireOwner, async (req, res) => {
+  await deleteRule(Number(req.params.id));
+  res.json({ ok: true });
+});
+
+router.post('/automation/run', requireOwner, async (req, res) => {
+  try {
+    const result = await runAutomation(req.body?.account_id ?? null);
+    res.json({ ok: true, ...result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

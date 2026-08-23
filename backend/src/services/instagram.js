@@ -29,6 +29,20 @@ export function fetchStories(accountId) {
   return graphGet(accountId, '/me/stories', { fields: MEDIA_FIELDS });
 }
 
+/** Comments for a media object. */
+export async function fetchMediaComments(accountId, mediaId) {
+  try {
+    const res = await graphGet(accountId, `/${mediaId}/comments`, {
+      fields: 'id,text,timestamp,username,like_count',
+      limit: '100',
+    });
+    return res.data || [];
+  } catch (err) {
+    console.warn(`[comments] media ${mediaId}: ${err.message}`);
+    return [];
+  }
+}
+
 const num = (insights, name) =>
   Number(insights?.data?.find((m) => m.name === name)?.values?.[0]?.value ?? 0);
 

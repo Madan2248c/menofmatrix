@@ -1,6 +1,7 @@
 import { query } from '../config/db.js';
 import { listAccounts, ensureFreshToken } from './tokenStore.js';
 import { fetchProfile, fetchAllMedia, fetchMediaInsights } from './instagram.js';
+import { syncCommentsForAccount } from './automationService.js';
 
 /** Sync one account: profile snapshot -> all media -> per-post insights. */
 async function syncAccount(account) {
@@ -93,7 +94,16 @@ async function syncAccount(account) {
     }
   }
 
-  return { accountId: account.id, username: account.username, mediaCount: media.length, withInsights };
+  // 4) Comments (feeds the comment-to-DM automation rules)
+  const commentsStored = await syncCommentsForAccount(account.id, media);
+
+  return {
+    accountId: account.id,
+    username: account.username,
+    mediaCount: media.length,
+    withInsights,
+    commentsStored,
+  };
 }
 
 /**
