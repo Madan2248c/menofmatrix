@@ -45,5 +45,11 @@ export const api = {
   summary: (accountId) => request(`/analytics/summary${q({ account_id: accountId })}`),
   sync: (accountId) =>
     request('/sync', { method: 'POST', body: JSON.stringify(accountId ? { account_id: accountId } : {}) }),
+  automationRules: (accountId) => request(`/automation/rules${q({ account_id: accountId })}`),
+  createAutomationRule: (payload) =>
+    request('/automation/rules', { method: 'POST', body: JSON.stringify(payload) }),
+  deleteAutomationRule: (id) => request(`/automation/rules/${id}`, { method: 'DELETE' }),
+  runAutomationNow: (accountId) =>
+    request('/automation/run', { method: 'POST', body: JSON.stringify(accountId ? { account_id: accountId } : {}) }),
 };
 

@@ -9,6 +9,7 @@ import Stories from './pages/Stories';
 import Analytics from './pages/Analytics';
 import Newsletters from './pages/Newsletters';
 import News from './pages/News';
+import Automation from './pages/Automation';
 
 export default function App() {
   return (
@@ -56,6 +57,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Newsletters />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/automation"
+          element={
+            <ProtectedRoute>
+              <Automation />
             </ProtectedRoute>
           }
         />

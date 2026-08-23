@@ -48,6 +48,7 @@ export default function Layout() {
               <NavLink to="/stories">Stories</NavLink>
               <NavLink to="/analytics">Analytics</NavLink>
               <NavLink to="/newsletters">Newsletter</NavLink>
+              <NavLink to="/automation">Automation</NavLink>
               <button className="link" onClick={connect}>＋ Connect</button>
               <button className="link" onClick={logout}>Logout</button>
             </>
