@@ -41,6 +41,7 @@ router.get('/callback', async (req, res) => {
       `<h2>✅ Instagram connected</h2>
        <p><strong>@${result.username}</strong> is now linked (account #${result.accountId}),
        token valid until ${new Date(result.expiresAt).toDateString()}.</p>
+       <p><strong>Granted permissions:</strong> ${result.grantedPermissions || '(not returned by Instagram)'}</p>
        <p>You can close this tab and open the dashboard.</p>`
     );
   } catch (err) {

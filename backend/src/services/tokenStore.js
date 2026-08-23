@@ -98,6 +98,7 @@ export async function exchangeCodeForToken(code) {
   });
   const short = await res.json();
   if (!res.ok) throw new Error(short?.error_message || 'Token exchange failed');
+  const grantedPermissions = short.permissions || short.data?.[0]?.permissions || null;
 
   // Step 2: long-lived token (~60 days)
   const llUrl = new URL('https://graph.instagram.com/access_token');
@@ -120,7 +121,8 @@ export async function exchangeCodeForToken(code) {
     accessToken: long.access_token,
     expiresAt,
   });
-  return { accountId: account.id, username: profile.username, expiresAt };
+  console.log(`[oauth] granted permissions for ${profile.username}:`, grantedPermissions);
+  return { accountId: account.id, username: profile.username, expiresAt, grantedPermissions };
 }
 
 /** Refresh a long-lived token when it will expire within `days` (default 7). */
