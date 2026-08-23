@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 export default function Login() {
   const { login } = useAuth();
@@ -24,19 +27,25 @@ export default function Login() {
   };
 
   return (
-    <div className="login-card">
-      <h2>Owner Login</h2>
-      <form onSubmit={submit}>
-        <input
-          type="password"
-          placeholder="Dashboard password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoFocus
-        />
-        <button disabled={busy || !password}>{busy ? 'Signing in…' : 'Sign in'}</button>
-        {error && <p className="error">{error}</p>}
-      </form>
-    </div>
+    <Card className="login-card">
+      <CardHeader>
+        <CardTitle>Owner Login</CardTitle>
+        <CardDescription>Restricted area — MenOfMatrix staff only.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <Input
+            type="password"
+            placeholder="Dashboard password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoFocus
+          />
+          <Button disabled={busy || !password}>{busy ? 'Signing in…' : 'Sign in'}</Button>
+          {error && <p className="text-sm text-[#aa2d00]">{error}</p>}
+        </form>
+      </CardContent>
+    </Card>
   );
 }
+
