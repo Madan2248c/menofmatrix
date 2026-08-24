@@ -61,6 +61,15 @@ export const api = {
     request(`/blog/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteBlogPost: (id) => request(`/blog/${id}`, { method: 'DELETE' }),
   uploadImage: (file) => upload('/uploads', file),
+  youtubeAuthUrl: () => request('/youtube/auth/url'),
+  youtubeAccounts: () => request('/youtube/accounts'),
+  deleteYoutubeAccount: (id) => request(`/youtube/accounts/${id}`, { method: 'DELETE' }),
+  youtubeVideos: (params = {}) => request(`/youtube/videos${q(params)}`),
+  youtubeShorts: (params = {}) => request(`/youtube/shorts${q(params)}`),
+  youtubeVideo: (id) => request(`/youtube/videos/${id}`),
+  youtubeSummary: (accountId) => request(`/youtube/analytics/summary${q({ account_id: accountId })}`),
+  youtubeSync: (accountId) =>
+    request('/youtube/sync', { method: 'POST', body: JSON.stringify(accountId ? { account_id: accountId } : {}) }),
   smtpStatus: () => request('/newsletter/smtp-status'),
   sendNewsletter: (subject, body) =>
     request('/newsletter/send', { method: 'POST', body: JSON.stringify({ subject, body }) }),

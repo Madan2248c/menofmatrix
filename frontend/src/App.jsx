@@ -12,6 +12,10 @@ import News from './pages/News';
 import Blog from './pages/Blog';
 import BlogPost from './pages/BlogPost';
 import BlogAdmin from './pages/BlogAdmin';
+import YouTubeVideos from './pages/YouTubeVideos';
+import YouTubeShorts from './pages/YouTubeShorts';
+import YouTubeAnalytics from './pages/YouTubeAnalytics';
+import YouTubeVideoDetail from './pages/YouTubeVideoDetail';
 import Automation from './pages/Automation';
 
 export default function App() {
@@ -78,6 +82,38 @@ export default function App() {
           element={
             <ProtectedRoute>
               <BlogAdmin />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/youtube/videos"
+          element={
+            <ProtectedRoute>
+              <YouTubeVideos />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/youtube/shorts"
+          element={
+            <ProtectedRoute>
+              <YouTubeShorts />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/youtube/analytics"
+          element={
+            <ProtectedRoute>
+              <YouTubeAnalytics />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/youtube/videos/:id"
+          element={
+            <ProtectedRoute>
+              <YouTubeVideoDetail />
             </ProtectedRoute>
           }
         />

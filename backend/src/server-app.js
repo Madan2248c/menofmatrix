@@ -6,6 +6,7 @@ import newsletterRoutes from './routes/newsletter.js';
 import newsRoutes from './routes/news.js';
 import blogRoutes from './routes/blog.js';
 import uploadRoutes from './routes/uploads.js';
+import youtubeRoutes from './routes/youtube.js';
 import cronRoutes from './routes/cron.js';
 
 const app = express();
@@ -29,6 +30,7 @@ app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/uploads', uploadRoutes);
+app.use('/api/youtube', youtubeRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api', apiRoutes);
 

@@ -25,6 +25,15 @@ router.all('/sync', requireCronSecret, async (_req, res) => {
     const result = await syncAll();
     console.log(`[cron] sync ok: ${result.totalMedia} media`);
 
+    let youtube = null;
+    try {
+      const { syncAll: syncYoutube } = await import('../services/youtubeService.js');
+      youtube = await syncYoutube();
+      console.log(`[cron] youtube sync ok: ${youtube.totalVideos} videos + ${youtube.totalShorts} shorts`);
+    } catch (err) {
+      console.error('[cron] youtube sync failed:', err.message);
+    }
+
     let automation = null;
     try {
       automation = await runAutomation();
@@ -33,7 +42,7 @@ router.all('/sync', requireCronSecret, async (_req, res) => {
       console.error('[cron] automation failed:', err.message);
     }
 
-    res.json({ ok: true, ...result, automation });
+    res.json({ ok: true, ...result, youtube, automation });
   } catch (err) {
     console.error('[cron] sync failed:', err.message);
     res.status(500).json({ error: err.message });

@@ -3,24 +3,32 @@ import { api } from '../api';
 
 const AccountContext = createContext(null);
 
-/** Tracks connected IG accounts and which one is currently selected. */
+/** Tracks connected Instagram + YouTube accounts and the selected account per platform. */
 export function AccountProvider({ children }) {
-  const [accounts, setAccounts] = useState([]);
-  const [selectedId, setSelectedId] = useState(
-    () => Number(localStorage.getItem('accountId')) || null
-  );
+  const [igAccounts, setIgAccounts] = useState([]);
+  const [youtubeAccounts, setYoutubeAccounts] = useState([]);
+  const [selected, setSelected] = useState(() => {
+    const raw = localStorage.getItem('selectedAccount');
+    return raw ? JSON.parse(raw) : null;
+  });
   const [loading, setLoading] = useState(true);
 
   const refresh = async () => {
     try {
-      const { data } = await api.accounts();
-      setAccounts(data || []);
-      setSelectedId((prev) => {
-        const valid = prev && (data || []).some((a) => a.id === prev);
-        const next = valid ? prev : ((data || [])[0]?.id ?? null);
-        if (next) localStorage.setItem('accountId', String(next));
-        else localStorage.removeItem('accountId');
-        return next;
+      const [{ data: ig = [] }, { data: yt = [] }] = await Promise.all([
+        api.accounts(),
+        api.youtubeAccounts(),
+      ]);
+      setIgAccounts(ig);
+      setYoutubeAccounts(yt);
+
+      // Keep current selection if it still exists; otherwise fall back to first available.
+      setSelected((prev) => {
+        if (prev?.platform === 'instagram' && ig.some((a) => a.id === prev.id)) return prev;
+        if (prev?.platform === 'youtube' && yt.some((a) => a.id === prev.id)) return prev;
+        if (ig[0]) return { id: ig[0].id, platform: 'instagram' };
+        if (yt[0]) return { id: yt[0].id, platform: 'youtube' };
+        return null;
       });
     } catch {
       /* backend down or not migrated yet */
@@ -33,13 +41,36 @@ export function AccountProvider({ children }) {
     refresh();
   }, []);
 
-  const select = (id) => {
-    localStorage.setItem('accountId', String(id));
-    setSelectedId(Number(id));
+  useEffect(() => {
+    if (selected) localStorage.setItem('selectedAccount', JSON.stringify(selected));
+    else localStorage.removeItem('selectedAccount');
+  }, [selected]);
+
+  const select = (id, platform) => {
+    setSelected({ id: Number(id), platform });
   };
 
+  const current =
+    selected?.platform === 'instagram'
+      ? igAccounts.find((a) => a.id === selected.id)
+      : selected?.platform === 'youtube'
+      ? youtubeAccounts.find((a) => a.id === selected.id)
+      : null;
+
   return (
-    <AccountContext.Provider value={{ accounts, selectedId, select, refresh, loading }}>
+    <AccountContext.Provider
+      value={{
+        accounts: [...igAccounts.map((a) => ({ ...a, platform: 'instagram' })), ...youtubeAccounts.map((a) => ({ ...a, platform: 'youtube' }))],
+        igAccounts,
+        youtubeAccounts,
+        selectedId: selected?.id ?? null,
+        selectedPlatform: selected?.platform ?? null,
+        selectedAccount: current,
+        select,
+        refresh,
+        loading,
+      }}
+    >
       {children}
     </AccountContext.Provider>
   );

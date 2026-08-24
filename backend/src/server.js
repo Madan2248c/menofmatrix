@@ -23,6 +23,18 @@ cron.schedule('0 * * * *', async () => {
   }
 });
 
+// Nightly YouTube sync (Analytics API has 1-day latency and tighter quota than Instagram)
+cron.schedule('0 2 * * *', async () => {
+  console.log('[cron] nightly YouTube sync starting');
+  try {
+    const { syncAll: syncYoutube } = await import('./services/youtubeService.js');
+    const r = await syncYoutube();
+    console.log(`[cron] youtube sync ok: ${r.totalVideos} videos + ${r.totalShorts} shorts`);
+  } catch (err) {
+    console.error('[cron] youtube sync failed:', err.message);
+  }
+});
+
 // AI news: poll the RSS stack every 15 minutes
 cron.schedule('*/15 * * * *', async () => {
   try {

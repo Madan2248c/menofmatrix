@@ -6,3 +6,5 @@ dist/
 .vercel
 .env*
 !.env.example
+# Google OAuth client secrets — downloaded from cloud console
+client_secret_*.apps.googleusercontent.com.json
