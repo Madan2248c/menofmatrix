@@ -4,6 +4,8 @@ import authRoutes from './routes/auth.js';
 import apiRoutes from './routes/api.js';
 import newsletterRoutes from './routes/newsletter.js';
 import newsRoutes from './routes/news.js';
+import blogRoutes from './routes/blog.js';
+import uploadRoutes from './routes/uploads.js';
 import cronRoutes from './routes/cron.js';
 
 const app = express();
@@ -25,6 +27,8 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/news', newsRoutes);
+app.use('/api/blog', blogRoutes);
+app.use('/api/uploads', uploadRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api', apiRoutes);
 

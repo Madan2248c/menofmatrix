@@ -28,6 +28,7 @@ export default function Layout() {
         <nav>
           <NavLink to="/" end>Home</NavLink>
           <NavLink to="/news">News</NavLink>
+          <NavLink to="/blog">Blog</NavLink>
           {token && (
             <>
               {accounts.length > 0 && (
@@ -49,6 +50,7 @@ export default function Layout() {
               <NavLink to="/analytics">Analytics</NavLink>
               <NavLink to="/newsletters">Newsletter</NavLink>
               <NavLink to="/automation">Automation</NavLink>
+              <NavLink to="/blog-admin">Blog Posts</NavLink>
               <button className="link" onClick={connect}>＋ Connect</button>
               <button className="link" onClick={logout}>Logout</button>
             </>

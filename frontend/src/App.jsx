@@ -9,6 +9,9 @@ import Stories from './pages/Stories';
 import Analytics from './pages/Analytics';
 import Newsletters from './pages/Newsletters';
 import News from './pages/News';
+import Blog from './pages/Blog';
+import BlogPost from './pages/BlogPost';
+import BlogAdmin from './pages/BlogAdmin';
 import Automation from './pages/Automation';
 
 export default function App() {
@@ -18,6 +21,8 @@ export default function App() {
         {/* Public pages */}
         <Route path="/" element={<Home />} />
         <Route path="/news" element={<News />} />
+        <Route path="/blog" element={<Blog />} />
+        <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/login" element={<Login />} />
         {/* Owner-only pages */}
         <Route
@@ -65,6 +70,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Automation />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/blog-admin"
+          element={
+            <ProtectedRoute>
+              <BlogAdmin />
             </ProtectedRoute>
           }
         />

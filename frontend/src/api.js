@@ -27,6 +27,23 @@ const q = (params) => {
   return s ? `?${s}` : '';
 };
 
+// Multipart upload — bypasses request() so the browser sets the multipart boundary.
+async function upload(path, file) {
+  const token = localStorage.getItem('token');
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Upload failed (${res.status})`);
+  }
+  return res.json();
+}
+
 export const api = {
   login: (password) =>
     request('/auth/login', { method: 'POST', body: JSON.stringify({ password }) }),
@@ -36,6 +53,14 @@ export const api = {
   deleteAccount: (id) => request(`/accounts/${id}`, { method: 'DELETE' }),
   newsletterSubscribers: () => request('/newsletter/subscribers'),
   news: (limit = 30) => request(`/news${limit ? `?limit=${limit}` : ''}`),
+  blogs: (limit = 50) => request(`/blog${limit ? `?limit=${limit}` : ''}`),
+  blog: (slug) => request(`/blog/${encodeURIComponent(slug)}`),
+  allBlogs: () => request('/blog/admin/all'),
+  createBlogPost: (payload) => request('/blog', { method: 'POST', body: JSON.stringify(payload) }),
+  updateBlogPost: (id, payload) =>
+    request(`/blog/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteBlogPost: (id) => request(`/blog/${id}`, { method: 'DELETE' }),
+  uploadImage: (file) => upload('/uploads', file),
   smtpStatus: () => request('/newsletter/smtp-status'),
   sendNewsletter: (subject, body) =>
     request('/newsletter/send', { method: 'POST', body: JSON.stringify({ subject, body }) }),
