@@ -49,7 +49,13 @@ router.get('/posts', async (req, res) => {
 
 router.get('/stories', async (req, res) => {
   const limit = Number(req.query.limit) || 20;
-  const accountId = Number(req.query.account_id);
+  const accountId = Number(req.query.account_id) || (await getFirstAccountId());
+  if (accountId) {
+    try {
+      const live = await fetchStories(accountId);
+      if (live?.data?.length) return res.json({ source: 'live', data: live.data.slice(0, limit) });
+    } catch {}
+  }
   const params = [];
   let where = "media_product_type = 'STORY' AND (story_expires_at IS NULL OR story_expires_at > now())";
   if (accountId) where += ` AND account_id = $${params.push(accountId)}`;
@@ -58,7 +64,7 @@ router.get('/stories', async (req, res) => {
     `SELECT * FROM posts WHERE ${where} ORDER BY posted_at DESC LIMIT $${params.length}`,
     params
   );
-  res.json({ data: rows });
+  res.json({ source: 'cache', data: rows });
 });
 
 router.get('/posts/:id', requireOwner, async (req, res) => {
