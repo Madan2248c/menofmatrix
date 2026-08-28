@@ -27,15 +27,35 @@ export function requireOwner(req, res, next) {
 router.get('/posts', async (req, res) => {
   const { limit = 50, offset = 0, type } = req.query;
   const params = [];
-  let where = "media_product_type IS DISTINCT FROM 'STORY'";
-  if (type && type !== 'all') {
-    where += ` AND media_product_type = $${params.push(type)}`;
+  let where;
+  if (type === 'STORY') {
+    where = "media_product_type = 'STORY' AND (story_expires_at IS NULL OR story_expires_at > now())";
+  } else if (type && type !== 'all') {
+    where = `media_product_type = $${params.push(type)}`;
+  } else if (type === 'all') {
+    where = "1=1";
+  } else {
+    where = "media_product_type IS DISTINCT FROM 'STORY'";
   }
   const accountId = Number(req.query.account_id);
   if (accountId) where += ` AND account_id = $${params.push(accountId)}`;
   const { rows } = await query(
     `SELECT * FROM posts WHERE ${where}
      ORDER BY posted_at DESC NULLS LAST LIMIT $${params.push(limit)} OFFSET $${params.push(offset)}`,
+    params
+  );
+  res.json({ data: rows });
+});
+
+router.get('/stories', async (req, res) => {
+  const limit = Number(req.query.limit) || 20;
+  const accountId = Number(req.query.account_id);
+  const params = [];
+  let where = "media_product_type = 'STORY' AND (story_expires_at IS NULL OR story_expires_at > now())";
+  if (accountId) where += ` AND account_id = $${params.push(accountId)}`;
+  params.push(limit);
+  const { rows } = await query(
+    `SELECT * FROM posts WHERE ${where} ORDER BY posted_at DESC LIMIT $${params.length}`,
     params
   );
   res.json({ data: rows });
