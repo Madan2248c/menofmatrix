@@ -3,6 +3,9 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import PublicStories from './pages/PublicStories';
+import PublicPosts from './pages/PublicPosts';
+import PublicFollowers from './pages/PublicFollowers';
 import Dashboard from './pages/Dashboard';
 import PostDetail from './pages/PostDetail';
 import Stories from './pages/Stories';
@@ -24,6 +27,9 @@ export default function App() {
       <Route element={<Layout />}>
         {/* Public pages */}
         <Route path="/" element={<Home />} />
+        <Route path="/stories" element={<PublicStories />} />
+        <Route path="/posts" element={<PublicPosts />} />
+        <Route path="/followers" element={<PublicFollowers />} />
         <Route path="/news" element={<News />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
@@ -46,7 +52,7 @@ export default function App() {
           }
         />
         <Route
-          path="/stories"
+          path="/dashboard/stories"
           element={
             <ProtectedRoute>
               <Stories />

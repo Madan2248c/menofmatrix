@@ -13,12 +13,27 @@ export default function Analytics() {
   const { selectedId } = useAccounts();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     if (!selectedId) return;
     setError('');
     api.summary(selectedId).then(setData).catch((e) => setError(e.message));
   }, [selectedId]);
+
+  const syncFollowers = async () => {
+    setSyncing(true);
+    setMessage('');
+    try {
+      const r = await api.syncFollowers();
+      setMessage(`✅ Synced follower list — ${r.upserted} updated${r.pruned ? `, ${r.pruned} removed` : ''}`);
+    } catch (err) {
+      setMessage(`❌ ${err.message}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   if (error) return <p className="error">{error}</p>;
   if (!data) return <p>Loading analytics…</p>;
@@ -69,6 +84,10 @@ export default function Analytics() {
       </p>
 
       <h3>Follower growth</h3>
+      <button className="link" style={{ marginBottom: 12, display: 'block' }} onClick={syncFollowers} disabled={syncing}>
+        {syncing ? 'Syncing follower list…' : '＋ Sync follower list (Apify)'}
+      </button>
+      {message && <p className="note">{message}</p>}
       {trend.length > 1 ? (
         <ResponsiveContainer width="100%" height={260}>
           <AreaChart data={trend}>

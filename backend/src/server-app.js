@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth.js';
 import apiRoutes from './routes/api.js';
+import publicRoutes from './routes/public.js';
 import newsletterRoutes from './routes/newsletter.js';
 import newsRoutes from './routes/news.js';
 import blogRoutes from './routes/blog.js';
@@ -25,6 +26,7 @@ app.use(
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
+app.use('/api/public', publicRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/news', newsRoutes);

@@ -1,18 +1,26 @@
-import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAccounts } from '../context/AccountContext';
 import { api } from '../api';
+import NavDropdown from './NavDropdown';
 import logoBlack from '../assets/men-of-matrix-logo-black.jpeg';
+
+const publicLinks = (
+  <>
+    <NavLink to="/stories">Stories</NavLink>
+    <NavLink to="/posts">Posts</NavLink>
+    <NavLink to="/followers">Followers</NavLink>
+    <NavLink to="/news">News</NavLink>
+    <NavLink to="/blog">Blog</NavLink>
+  </>
+);
 
 export default function Layout() {
   const { token, logout } = useAuth();
   const navigate = useNavigate();
   const { accounts, selectedId, selectedPlatform, select } = useAccounts();
-  const [connectOpen, setConnectOpen] = useState(false);
 
   const connectInstagram = async () => {
-    setConnectOpen(false);
     try {
       const { url } = await api.instagramAuthUrl();
       window.location.href = url;
@@ -22,7 +30,6 @@ export default function Layout() {
   };
 
   const connectYouTube = async () => {
-    setConnectOpen(false);
     try {
       const { url } = await api.youtubeAuthUrl();
       window.location.href = url;
@@ -40,8 +47,7 @@ export default function Layout() {
         </Link>
         <nav>
           <NavLink to="/" end>Home</NavLink>
-          <NavLink to="/news">News</NavLink>
-          <NavLink to="/blog">Blog</NavLink>
+          {!token && publicLinks}
           {token && (
             <>
               {accounts.length > 0 && (
@@ -74,44 +80,26 @@ export default function Layout() {
                   </optgroup>
                 </select>
               )}
-              <NavLink to="/dashboard">Dashboard</NavLink>
-              <NavLink to="/stories">Stories</NavLink>
-              <NavLink to="/analytics">Analytics</NavLink>
-              <NavLink to="/newsletters">Newsletter</NavLink>
-              <NavLink to="/automation">Automation</NavLink>
-              <NavLink to="/blog-admin">Blog Posts</NavLink>
-              <NavLink to="/youtube/videos">YouTube Videos</NavLink>
-              <NavLink to="/youtube/shorts">YouTube Shorts</NavLink>
-              <NavLink to="/youtube/analytics">YouTube Analytics</NavLink>
-              <div className="connect-menu" style={{ position: 'relative' }}>
-                <button className="link" onClick={() => setConnectOpen((o) => !o)}>＋ Connect</button>
-                {connectOpen && (
-                  <div
-                    className="dropdown"
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      right: 0,
-                      background: 'var(--canvas)',
-                      border: '1px solid var(--hairline)',
-                      borderRadius: 'var(--r-sm)',
-                      padding: 8,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 4,
-                      minWidth: 160,
-                      zIndex: 100,
-                    }}
-                  >
-                    <button className="link" style={{ textAlign: 'left' }} onClick={connectInstagram}>
-                      Connect Instagram
-                    </button>
-                    <button className="link" style={{ textAlign: 'left' }} onClick={connectYouTube}>
-                      Connect YouTube
-                    </button>
-                  </div>
-                )}
-              </div>
+              <NavDropdown label="Manage">
+                <NavLink to="/dashboard">Dashboard</NavLink>
+                <NavLink to="/dashboard/stories">Stories (live)</NavLink>
+                <NavLink to="/analytics">Analytics</NavLink>
+                <NavLink to="/newsletters">Newsletter</NavLink>
+                <NavLink to="/automation">Automation</NavLink>
+                <NavLink to="/blog-admin">Blog Posts</NavLink>
+                <div className="drop-divider" />
+                <p className="drop-label">Public site</p>
+                {publicLinks}
+              </NavDropdown>
+              <NavDropdown label="YouTube">
+                <NavLink to="/youtube/videos">Videos</NavLink>
+                <NavLink to="/youtube/shorts">Shorts</NavLink>
+                <NavLink to="/youtube/analytics">Analytics</NavLink>
+              </NavDropdown>
+              <NavDropdown label="＋ Connect" align="right">
+                <button className="link" onClick={connectInstagram}>Connect Instagram</button>
+                <button className="link" onClick={connectYouTube}>Connect YouTube</button>
+              </NavDropdown>
               <button className="link" onClick={logout}>Logout</button>
             </>
           )}
@@ -127,4 +115,3 @@ export default function Layout() {
     </div>
   );
 }
-

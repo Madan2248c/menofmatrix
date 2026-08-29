@@ -5,6 +5,7 @@ import { query } from '../config/db.js';
 import { listAccounts, getFirstAccountId, getAccount, deleteAccount } from '../services/tokenStore.js';
 import { fetchStories } from '../services/instagram.js';
 import { syncAll } from '../services/syncService.js';
+import { syncFollowersList } from '../services/apifyFollowers.js';
 import { listRules, createRule, deleteRule, runAutomation } from '../services/automationService.js';
 
 const router = Router();
@@ -25,7 +26,8 @@ export function requireOwner(req, res, next) {
 
 // Public: post feed (public Instagram content served from our cache)
 router.get('/posts', async (req, res) => {
-  const { limit = 50, offset = 0, type } = req.query;
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const { offset = 0, type } = req.query;
   const params = [];
   let where;
   if (type === 'STORY') {
@@ -40,7 +42,9 @@ router.get('/posts', async (req, res) => {
   const accountId = Number(req.query.account_id);
   if (accountId) where += ` AND account_id = $${params.push(accountId)}`;
   const { rows } = await query(
-    `SELECT * FROM posts WHERE ${where}
+    `SELECT id, account_id, caption, media_type, media_product_type, media_url, thumbnail_url,
+            permalink, posted_at, like_count, comments_count, reach, views, total_interactions, synced_at
+     FROM posts WHERE ${where}
      ORDER BY posted_at DESC NULLS LAST LIMIT $${params.push(limit)} OFFSET $${params.push(offset)}`,
     params
   );
@@ -149,7 +153,7 @@ router.get('/analytics/summary', requireOwner, async (req, res) => {
   });
 });
 
-router.get('/status', async (_req, res) => {
+router.get('/status', requireOwner, async (_req, res) => {
   const accounts = await listAccounts();
   const lastSync = await query(`SELECT * FROM sync_log ORDER BY id DESC LIMIT 1`);
   res.json({
@@ -170,6 +174,21 @@ router.get('/status', async (_req, res) => {
 router.post('/sync', requireOwner, async (req, res) => {
   try {
     const result = await syncAll(req.body?.account_id ?? null);
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Owner: scrape + cache the Instagram follower list via Apify (manual, pay-per-event)
+router.post('/followers/sync', requireOwner, async (req, res) => {
+  try {
+    const accountId =
+      Number(req.body?.account_id) ||
+      Number(req.query.account_id) ||
+      (await getFirstAccountId());
+    if (!accountId) return res.status(400).json({ error: 'No Instagram accounts connected' });
+    const result = await syncFollowersList(accountId);
     res.json({ ok: true, ...result });
   } catch (err) {
     res.status(500).json({ error: err.message });

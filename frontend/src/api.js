@@ -79,6 +79,13 @@ export const api = {
   summary: (accountId) => request(`/analytics/summary${q({ account_id: accountId })}`),
   sync: (accountId) =>
     request('/sync', { method: 'POST', body: JSON.stringify(accountId ? { account_id: accountId } : {}) }),
+  syncFollowers: () => request('/followers/sync', { method: 'POST', body: JSON.stringify({}) }),
+  // Public content pages (work logged-out)
+  publicAccounts: () => request('/public/accounts'),
+  publicStories: () => request('/public/stories'),
+  publicYoutubeVideos: (params = {}) => request(`/public/youtube/videos${q(params)}`),
+  publicFollowers: () => request('/public/followers'),
+  publicIgFollowers: (params = {}) => request(`/public/instagram/followers${q(params)}`),
   automationRules: (accountId) => request(`/automation/rules${q({ account_id: accountId })}`),
   createAutomationRule: (payload) =>
     request('/automation/rules', { method: 'POST', body: JSON.stringify(payload) }),

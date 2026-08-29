@@ -18,6 +18,24 @@ const EXT_BY_MIME = {
   'image/gif': 'gif',
 };
 
+/** Store a follower avatar under a stable followers/ key; returns { key, url }. */
+export async function uploadFollowerAvatar(accountId, followerId, buffer, mime) {
+  const ext = EXT_BY_MIME[mime] || 'jpg';
+  return uploadObject(`followers/${accountId}/${followerId}.${ext}`, buffer, mime);
+}
+
+async function uploadObject(key, buffer, mime) {
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: bucket(),
+      Key: key,
+      Body: buffer,
+      ContentType: mime,
+    })
+  );
+  return { key, url: publicUrl(key) };
+}
+
 /** Stable public URL for an uploaded object (served by GET /api/uploads/<key>). */
 export const publicUrl = (key) => `/api/uploads/${key}`;
 
@@ -42,7 +60,7 @@ export async function uploadBlogImage(buffer, mime) {
 }
 
 /** Fetch an object for streaming to the client; null when it does not exist. */
-export async function getBlogImage(key) {
+export async function getObject(key) {
   try {
     return await s3.send(new GetObjectCommand({ Bucket: bucket(), Key: key }));
   } catch (err) {

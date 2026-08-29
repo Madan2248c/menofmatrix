@@ -1,6 +1,6 @@
 import { query } from '../config/db.js';
 import { listAccounts, ensureFreshToken } from './tokenStore.js';
-import { fetchProfile, fetchAllMedia, fetchMediaInsights } from './instagram.js';
+import { fetchProfile, fetchAllMedia, fetchMediaInsights, fetchStories } from './instagram.js';
 import { syncCommentsForAccount } from './automationService.js';
 
 /** Sync one account: profile snapshot -> all media -> per-post insights. */
@@ -19,11 +19,18 @@ async function syncAccount(account) {
     [account.id, profile.followers_count ?? null, profile.follows_count ?? null, profile.media_count ?? null]
   );
 
-  // 2) All media (feed posts, carousels, reels, active stories)
-  const media = await fetchAllMedia(account.id);
+  // 2) All media (feed posts, carousels, reels + active stories)
+  // /me/media does NOT include stories — they only come from /me/stories.
+  const [media, liveStories] = await Promise.all([
+    fetchAllMedia(account.id),
+    fetchStories(account.id).catch(() => ({ data: [] })),
+  ]);
+  const storiesById = new Map(liveStories.data?.map((s) => [s.id, s]));
+  media.forEach((m) => storiesById.set(m.id, m));
+  const allMedia = [...storiesById.values()];
   let withInsights = 0;
 
-  for (const m of media) {
+  for (const m of allMedia) {
     const isStory = m.media_product_type === 'STORY';
     const ins = await fetchMediaInsights(account.id, m.id, m.media_product_type);
     if (ins) withInsights++;

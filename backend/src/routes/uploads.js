@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import 'dotenv/config';
 import multer from 'multer';
 import { pipeline } from 'node:stream/promises';
-import { uploadBlogImage, getBlogImage, isAllowedImageMime } from '../services/storageService.js';
+import { uploadBlogImage, getObject, isAllowedImageMime } from '../services/storageService.js';
 
 const router = Router();
 
@@ -39,15 +39,20 @@ router.post('/', requireOwner, upload.single('file'), async (req, res) => {
   }
 });
 
-// Public: browsers load blog images without auth headers. Keys are namespaced
-// to blog/ and content-addressed by uuid, so they are safe to cache forever.
-router.get('/blog/*', async (req, res) => {
+// Public: browsers load cached images without auth headers. Keys are namespaced
+// (blog/ is content-addressed by uuid, followers/ by numeric follower id), so
+// they are safe to cache forever.
+router.get('/:kind/*', async (req, res) => {
   try {
-    const key = `blog/${req.params[0]}`;
-    if (!/^blog\/[\w.-]+$/.test(key) || key.includes('..')) {
+    const kind = req.params.kind;
+    if (!['blog', 'followers'].includes(kind)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    const key = `${kind}/${req.params[0]}`;
+    if (!/^[\w./-]+$/.test(req.params[0]) || key.includes('..')) {
       return res.status(400).json({ error: 'Invalid key' });
     }
-    const obj = await getBlogImage(key);
+    const obj = await getObject(key);
     if (!obj) return res.status(404).json({ error: 'Not found' });
     res.setHeader('Content-Type', obj.ContentType || 'application/octet-stream');
     if (obj.ContentLength != null) res.setHeader('Content-Length', obj.ContentLength);
