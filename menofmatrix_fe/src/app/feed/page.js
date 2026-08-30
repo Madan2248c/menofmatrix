@@ -8,7 +8,6 @@ import {
   HiOutlineRss,
   HiOutlineCalendar,
   HiOutlineArrowTopRightOnSquare,
-  HiOutlineNewspaper,
   HiMiniSignal,
   HiOutlineArrowRight,
   HiOutlineArrowPath,
@@ -30,7 +29,126 @@ const poppins = Poppins({
 const SOFT_EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
 
 // ---------------------------------------------------------------------------
-// Helpers: Read Time & Formatting
+// Procedural Organic SVG Blob Generator
+// Produces genuine, irregular, multi-lobed amoeba / liquid contours.
+// ---------------------------------------------------------------------------
+
+function generateBlobPath(w, h, seed = 0, lobes = 8, irregularity = 0.18) {
+  const cx = w / 2;
+  const cy = h / 2;
+  const rx = (w / 2) * 0.92;
+  const ry = (h / 2) * 0.92;
+  const pts = [];
+
+  for (let i = 0; i < lobes; i++) {
+    const angle = (i / lobes) * Math.PI * 2 - Math.PI / 2;
+    // Harmonic wave variation based on seed and lobe index
+    const wave = 1 + irregularity * Math.sin(i * 2.8 + seed * 1.7) + (irregularity * 0.5) * Math.cos(i * 1.5 + seed * 2.4);
+    const x = cx + Math.cos(angle) * rx * wave;
+    const y = cy + Math.sin(angle) * ry * wave;
+    pts.push([Math.max(6, Math.min(w - 6, x)), Math.max(6, Math.min(h - 6, y))]);
+  }
+
+  const p = (i) => pts[((i % lobes) + lobes) % lobes];
+  let d = `M ${p(0)[0].toFixed(1)} ${p(0)[1].toFixed(1)}`;
+
+  for (let i = 0; i < lobes; i++) {
+    const p0 = p(i - 1), p1 = p(i), p2 = p(i + 1), p3 = p(i + 2);
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+
+  return `${d} Z`;
+}
+
+// ---------------------------------------------------------------------------
+// Organic Blob Container (SVG Hull + Frosted Glass + Specular Highlights)
+// ---------------------------------------------------------------------------
+
+function OrganicBlobCard({
+  seed = 0,
+  lobes = 8,
+  irregularity = 0.18,
+  tone = "light",
+  gradientClass = "from-white/95 via-white/90 to-pink-50/40",
+  className = "",
+  style = {},
+  children,
+  onClick,
+}) {
+  const containerRef = useRef(null);
+  const [dim, setDim] = useState({ w: 400, h: 300 });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        setDim({
+          w: Math.max(200, Math.round(entry.contentRect.width)),
+          h: Math.max(150, Math.round(entry.contentRect.height)),
+        });
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const pathD = useMemo(
+    () => generateBlobPath(dim.w, dim.h, seed, lobes, irregularity),
+    [dim.w, dim.h, seed, lobes, irregularity]
+  );
+
+  const isDark = tone === "dark";
+
+  return (
+    <div
+      ref={containerRef}
+      onClick={onClick}
+      className={`relative group ${onClick ? "cursor-pointer" : ""} ${className}`}
+      style={{
+        filter: isDark
+          ? "drop-shadow(0 28px 60px rgba(0,0,0,0.38)) drop-shadow(0 2px 8px rgba(0,0,0,0.2))"
+          : "drop-shadow(0 24px 54px rgba(60,50,35,0.08)) drop-shadow(0 2px 6px rgba(0,0,0,0.03))",
+        ...style,
+      }}
+    >
+      {/* SVG True Organic Blob Background */}
+      <div
+        className={`absolute inset-0 transition-transform duration-500 group-hover:scale-[1.01] ${
+          isDark
+            ? "bg-neutral-950/95"
+            : `bg-gradient-to-br ${gradientClass} backdrop-blur-2xl`
+        }`}
+        style={{
+          clipPath: `path('${pathD}')`,
+          transitionTimingFunction: SOFT_EASE,
+        }}
+      />
+
+      {/* Specular Rim Stroke SVG */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-500 group-hover:scale-[1.01]">
+        <path
+          d={pathD}
+          fill="none"
+          stroke={isDark ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.92)"}
+          strokeWidth="1.5"
+        />
+      </svg>
+
+      {/* Internal Content Slot (Safely Padded inside the Blob Center) */}
+      <div className="relative z-10 p-6 sm:p-9 h-full flex flex-col justify-between">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers: Read Time & Formatter
 // ---------------------------------------------------------------------------
 
 function estimateReadTime(text) {
@@ -54,7 +172,7 @@ function formatDate(dateStr) {
 }
 
 // ---------------------------------------------------------------------------
-// Sub-components: Reader Modal & Detail Views
+// Modal Reader Sanctum (Interactive Deep Dive)
 // ---------------------------------------------------------------------------
 
 function ReaderModal({ item, type, onClose }) {
@@ -96,9 +214,8 @@ function ReaderModal({ item, type, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/40 backdrop-blur-xl animate-in fade-in duration-300">
-      {/* Modal Container */}
-      <div className="relative flex flex-col w-full max-w-3xl max-h-[90dvh] overflow-hidden rounded-[32px] sm:rounded-[40px] border border-white/90 bg-white/95 shadow-[0_32px_80px_rgba(0,0,0,0.22)] backdrop-blur-2xl">
-        {/* Reading Progress Top Bar */}
+      <div className="relative flex flex-col w-full max-w-3xl max-h-[90dvh] overflow-hidden rounded-[36px] sm:rounded-[44px] border border-white/90 bg-white/95 shadow-[0_32px_80px_rgba(0,0,0,0.24)] backdrop-blur-2xl">
+        {/* Progress Bar */}
         <div className="absolute inset-x-0 top-0 h-1.5 bg-neutral-100 z-30">
           <div
             className="h-full bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 transition-all duration-150"
@@ -106,7 +223,7 @@ function ReaderModal({ item, type, onClose }) {
           />
         </div>
 
-        {/* Modal Header */}
+        {/* Header */}
         <div className="flex items-start justify-between gap-4 p-6 sm:p-8 pb-4 border-b border-neutral-100 shrink-0">
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -158,7 +275,7 @@ function ReaderModal({ item, type, onClose }) {
           </div>
         </div>
 
-        {/* Modal Scrollable Body */}
+        {/* Scrollable Body */}
         <div
           onScroll={handleScroll}
           className="flex-1 overflow-y-auto p-6 sm:p-8 pt-4 space-y-6 text-neutral-700 leading-relaxed [scrollbar-width:thin]"
@@ -218,7 +335,7 @@ function ReaderModal({ item, type, onClose }) {
 }
 
 // ---------------------------------------------------------------------------
-// Main Organic Cosmos Feed Page
+// Main Page: Fluid Organic Cosmos Archipelago
 // ---------------------------------------------------------------------------
 
 export default function FeedPage() {
@@ -300,44 +417,28 @@ export default function FeedPage() {
   const remainingBlogs = filteredBlogs.slice(3);
 
   return (
-    <div className={`${poppins.className} relative min-h-dvh w-full bg-[#fdfbf9] text-neutral-900 overflow-x-hidden selection:bg-pink-500 selection:text-white pb-36`}>
-      {/* CSS Keyframes for Breathing Morphing Blobs */}
-      <style>{`
-        @keyframes mofm-blob-morph-1 {
-          0%, 100% { border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%; transform: rotate(0deg); }
-          50% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: rotate(1.5deg); }
-        }
-        @keyframes mofm-blob-morph-2 {
-          0%, 100% { border-radius: 50% 50% 35% 65% / 40% 60% 40% 60%; }
-          50% { border-radius: 35% 65% 55% 45% / 55% 40% 60% 45%; }
-        }
-        @keyframes mofm-soundwave {
-          0%, 100% { height: 4px; }
-          50% { height: 18px; }
-        }
-      `}</style>
-
+    <div className={`${poppins.className} relative min-h-dvh w-full bg-[#fbf9f6] text-neutral-900 overflow-x-hidden selection:bg-rose-500 selection:text-white pb-36`}>
       {/* Dynamic Ambient Background Canvas */}
       <div
-        className="pointer-events-none fixed inset-0 z-0 opacity-80"
+        className="pointer-events-none fixed inset-0 z-0 opacity-75"
         style={{
-          background: `radial-gradient(750px circle at ${mousePos.x}px ${mousePos.y}px, rgba(244,114,182,0.08), rgba(168,85,247,0.05), transparent 70%)`,
+          background: `radial-gradient(800px circle at ${mousePos.x}px ${mousePos.y}px, rgba(244,114,182,0.08), rgba(168,85,247,0.05), transparent 70%)`,
         }}
       />
-      <div className="pointer-events-none fixed -top-32 left-10 h-[450px] w-[450px] rounded-full bg-gradient-to-tr from-pink-300/20 via-rose-200/15 to-transparent blur-[120px]" />
-      <div className="pointer-events-none fixed top-1/3 right-10 h-[500px] w-[500px] rounded-full bg-gradient-to-bl from-blue-300/15 via-indigo-200/10 to-transparent blur-[130px]" />
-      <div className="pointer-events-none fixed -bottom-20 left-1/3 h-[400px] w-[400px] rounded-full bg-gradient-to-tr from-amber-300/15 via-purple-200/10 to-transparent blur-[120px]" />
+      <div className="pointer-events-none fixed -top-32 left-10 h-[480px] w-[480px] rounded-full bg-gradient-to-tr from-pink-300/20 via-rose-200/15 to-transparent blur-[130px]" />
+      <div className="pointer-events-none fixed top-1/3 right-10 h-[520px] w-[520px] rounded-full bg-gradient-to-bl from-blue-300/15 via-indigo-200/10 to-transparent blur-[140px]" />
+      <div className="pointer-events-none fixed -bottom-20 left-1/3 h-[420px] w-[420px] rounded-full bg-gradient-to-tr from-amber-300/15 via-purple-200/10 to-transparent blur-[130px]" />
 
-      {/* Main Content Archipelago Container */}
+      {/* Main Content Cosmos */}
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12">
         {/* ------------------------------------------------------------------ */}
         {/* Header Archipelago: Title, Category Pills & Search Capsule        */}
         {/* ------------------------------------------------------------------ */}
         <div className="flex flex-col lg:flex-row items-center justify-between gap-6 pb-8 border-b border-neutral-200/60">
           <div className="flex flex-col items-center lg:items-start text-center lg:text-left space-y-1.5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200/80 bg-white/90 px-3.5 py-1 text-[10px] font-bold uppercase tracking-widest text-neutral-600 shadow-xs backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200/80 bg-white/90 px-3.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-neutral-600 shadow-xs backdrop-blur-md">
               <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>Living Knowledge Nexus</span>
+              <span>Organic Knowledge Archipelago</span>
             </div>
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-neutral-900">
               Matrix <span className="bg-gradient-to-r from-pink-600 via-rose-600 to-purple-600 bg-clip-text text-transparent">Dispatches</span>
@@ -349,7 +450,7 @@ export default function FeedPage() {
 
           {/* Interactive Search & Filter Matrix */}
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-            {/* Search Pill */}
+            {/* Search Capsule */}
             <div className="relative w-full sm:w-72">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-neutral-400">
                 <HiOutlineMagnifyingGlass className="h-4 w-4" />
@@ -371,7 +472,7 @@ export default function FeedPage() {
               )}
             </div>
 
-            {/* Category Morph Selector */}
+            {/* Category Filter Pill */}
             <div className="flex items-center gap-1 rounded-full border border-neutral-200/80 bg-white/90 p-1 shadow-xs backdrop-blur-xl">
               {[
                 { id: "all", label: "All Streams", count: blogs.length + news.length },
@@ -403,12 +504,12 @@ export default function FeedPage() {
         </div>
 
         {/* ------------------------------------------------------------------ */}
-        {/* Main Organic Blob Grid Archipelago                                */}
+        {/* Irregular Organic Blobs Grid                                       */}
         {/* ------------------------------------------------------------------ */}
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-10">
             {[1, 2, 3].map((n) => (
-              <div key={n} className="h-72 rounded-[40px] bg-white/70 border border-white/80 animate-pulse p-6 shadow-sm space-y-4">
+              <div key={n} className="h-72 rounded-[48px] bg-white/70 border border-white/80 animate-pulse p-6 shadow-sm space-y-4">
                 <div className="h-5 w-28 rounded-full bg-neutral-200" />
                 <div className="h-8 w-3/4 rounded-2xl bg-neutral-200/70" />
                 <div className="h-24 w-full rounded-3xl bg-neutral-200/40" />
@@ -428,128 +529,139 @@ export default function FeedPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 pt-8 items-start">
             {/* ---------------------------------------------------------------- */}
-            {/* POD 1: Hero Nexus Drop (Asymmetrical Amorphous Shape)             */}
+            {/* BLOB 1: The Prime Nexus Amoeba (Irregular Lobe Seed = 1)          */}
             {/* ---------------------------------------------------------------- */}
             {heroBlog && (
-              <div
-                onClick={() => setReadingItem({ type: "blog", item: heroBlog })}
-                className="group relative lg:col-span-8 cursor-pointer transition-all duration-500 hover:-translate-y-1"
-              >
-                <div className="relative overflow-hidden rounded-[40px] sm:rounded-[52px] border border-white/90 bg-gradient-to-br from-white/95 via-white/90 to-pink-50/40 p-6 sm:p-10 shadow-[0_24px_60px_rgba(60,50,35,0.08),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-2xl">
-                  {/* Subtle Top Specular Sheen */}
-                  <div className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-90" />
-                  
-                  {/* Background Watermark Glow */}
-                  <div className="pointer-events-none absolute -bottom-10 -right-10 h-64 w-64 rounded-full bg-gradient-to-tl from-rose-400/20 via-purple-400/10 to-transparent blur-3xl" />
-
-                  {/* Header Badges */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-2.5 w-2.5 rounded-full bg-rose-500 animate-ping" />
-                      <span className="rounded-full bg-rose-500/10 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-rose-600">
-                        Prime Nexus Drop
-                      </span>
-                      <span className="flex items-center gap-1 rounded-full bg-neutral-100/90 px-3 py-1 text-[11px] font-semibold text-neutral-600">
-                        <HiOutlineClock className="h-3.5 w-3.5" /> {estimateReadTime(heroBlog.content_html || heroBlog.excerpt)}
-                      </span>
+              <div className="lg:col-span-8">
+                <OrganicBlobCard
+                  seed={1}
+                  lobes={9}
+                  irregularity={0.22}
+                  gradientClass="from-white/95 via-white/90 to-rose-50/40"
+                  onClick={() => setReadingItem({ type: "blog", item: heroBlog })}
+                  className="min-h-[420px]"
+                >
+                  <div>
+                    {/* Header Strip */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-2.5 w-2.5 rounded-full bg-rose-500 animate-ping" />
+                        <span className="rounded-full bg-rose-500/10 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-rose-600">
+                          Prime Nexus Drop
+                        </span>
+                        <span className="flex items-center gap-1 rounded-full bg-neutral-100/90 px-3 py-1 text-[11px] font-semibold text-neutral-600">
+                          <HiOutlineClock className="h-3.5 w-3.5" /> {estimateReadTime(heroBlog.content_html || heroBlog.excerpt)}
+                        </span>
+                      </div>
+                      {formatDate(heroBlog.published_at || heroBlog.created_at) && (
+                        <span className="text-[11px] font-semibold text-neutral-400">
+                          {formatDate(heroBlog.published_at || heroBlog.created_at)}
+                        </span>
+                      )}
                     </div>
-                    {formatDate(heroBlog.published_at || heroBlog.created_at) && (
-                      <span className="text-[11px] font-semibold text-neutral-400">
-                        {formatDate(heroBlog.published_at || heroBlog.created_at)}
-                      </span>
+
+                    {/* Headline & Excerpt */}
+                    <div className="space-y-3">
+                      <h2 className="text-xl sm:text-3xl font-black text-neutral-900 leading-tight group-hover:text-rose-600 transition-colors">
+                        {heroBlog.title}
+                      </h2>
+                      {heroBlog.excerpt && (
+                        <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed line-clamp-3 max-w-2xl">
+                          {heroBlog.excerpt}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Cover Artwork */}
+                    {heroBlog.cover_image_url && (
+                      <div className="mt-5 aspect-[16/8] w-full overflow-hidden rounded-[28px] bg-neutral-100 ring-1 ring-black/5 shadow-inner">
+                        <img
+                          src={heroBlog.cover_image_url}
+                          alt=""
+                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        />
+                      </div>
                     )}
                   </div>
 
-                  {/* Hero Title & Description */}
-                  <div className="space-y-4">
-                    <h2 className="text-xl sm:text-3xl lg:text-4xl font-black text-neutral-900 leading-tight group-hover:text-rose-600 transition-colors">
-                      {heroBlog.title}
-                    </h2>
-                    {heroBlog.excerpt && (
-                      <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed line-clamp-3 max-w-2xl">
-                        {heroBlog.excerpt}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Hero Cover Thumbnail with Organic Mask */}
-                  {heroBlog.cover_image_url && (
-                    <div className="mt-6 aspect-[16/8] w-full overflow-hidden rounded-[28px] bg-neutral-100 ring-1 ring-black/5 shadow-inner">
-                      <img
-                        src={heroBlog.cover_image_url}
-                        alt=""
-                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      />
-                    </div>
-                  )}
-
-                  {/* Footer Action Strip */}
-                  <div className="mt-6 flex items-center justify-between pt-4 border-t border-neutral-100">
-                    <div className="flex items-center gap-2 text-xs font-bold text-rose-600">
+                  {/* Footer Action */}
+                  <div className="mt-6 flex items-center justify-between pt-4 border-t border-neutral-100/80">
+                    <div className="flex items-center gap-2 text-xs font-black text-rose-600">
                       <span>Enter Deep Dive</span>
                       <HiOutlineArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </div>
-                    <span className="text-[11px] text-neutral-400 font-medium">Click anywhere to read</span>
+                    <span className="text-[11px] text-neutral-400 font-medium">Click blob to read full story</span>
                   </div>
-                </div>
+                </OrganicBlobCard>
               </div>
             )}
 
             {/* ---------------------------------------------------------------- */}
-            {/* POD 2: Live AI Radar Swarm (Real-Time News Stream)                */}
+            {/* BLOB 2: AI Radar Liquid Amoeba (Irregular Lobe Seed = 2)          */}
             {/* ---------------------------------------------------------------- */}
-            <div className="lg:col-span-4 flex flex-col gap-4">
-              <div className="relative overflow-hidden rounded-[40px] border border-white/90 bg-gradient-to-br from-white/95 via-blue-50/30 to-indigo-50/20 p-6 sm:p-7 shadow-[0_20px_50px_rgba(60,50,35,0.07),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-2xl">
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-90" />
-                
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-xs">
-                      <HiMiniSignal className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-xs font-extrabold uppercase tracking-wider text-neutral-900">AI Radar Stream</h3>
-                      <p className="text-[10px] text-neutral-400">Live web pulse & alpha signals</p>
-                    </div>
-                  </div>
-                  <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-ping" />
-                </div>
-
-                {/* News Swarm List */}
-                <div className="divide-y divide-neutral-100">
-                  {filteredNews.slice(0, 5).map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => setReadingItem({ type: "news", item })}
-                      className="group/news py-3.5 first:pt-1 last:pb-1 cursor-pointer transition-all hover:translate-x-1"
-                    >
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                          {item.source || "AI Radar"}
-                        </span>
-                        {formatDate(item.published_at || item.created_at) && (
-                          <span className="text-[9px] font-medium text-neutral-400">
-                            {formatDate(item.published_at || item.created_at)}
-                          </span>
-                        )}
+            <div className="lg:col-span-4 flex flex-col gap-5">
+              <OrganicBlobCard
+                seed={2}
+                lobes={8}
+                irregularity={0.2}
+                gradientClass="from-white/95 via-blue-50/30 to-indigo-50/20"
+                className="min-h-[380px]"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-xs">
+                        <HiMiniSignal className="h-4 w-4" />
                       </div>
-                      <h4 className="text-xs font-bold leading-snug text-neutral-800 group-hover/news:text-blue-600 transition-colors line-clamp-2">
-                        {item.title}
-                      </h4>
+                      <div>
+                        <h3 className="text-xs font-black uppercase tracking-wider text-neutral-900">AI Radar Stream</h3>
+                        <p className="text-[10px] text-neutral-400">Live autonomous signal radar</p>
+                      </div>
                     </div>
-                  ))}
-                  {filteredNews.length === 0 && (
-                    <div className="py-6 text-center text-xs text-neutral-400">
-                      No live radar signals matching your search.
-                    </div>
-                  )}
-                </div>
-              </div>
+                    <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-ping" />
+                  </div>
 
-              {/* Mini Audio / Synthesis Pulse Bubble */}
-              <div className="relative overflow-hidden rounded-[32px] border border-white/90 bg-white/90 p-5 shadow-[0_12px_36px_rgba(60,50,35,0.06)] backdrop-blur-xl flex items-center justify-between">
+                  {/* News Stream List */}
+                  <div className="divide-y divide-neutral-100">
+                    {filteredNews.slice(0, 5).map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => setReadingItem({ type: "news", item })}
+                        className="group/news py-3 first:pt-1 last:pb-1 cursor-pointer transition-all hover:translate-x-1"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-[9px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                            {item.source || "AI Radar"}
+                          </span>
+                          {formatDate(item.published_at || item.created_at) && (
+                            <span className="text-[9px] font-medium text-neutral-400">
+                              {formatDate(item.published_at || item.created_at)}
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="text-xs font-bold leading-snug text-neutral-800 group-hover/news:text-blue-600 transition-colors line-clamp-2">
+                          {item.title}
+                        </h4>
+                      </div>
+                    ))}
+                    {filteredNews.length === 0 && (
+                      <div className="py-6 text-center text-xs text-neutral-400">
+                        No live radar signals matching your search.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-neutral-100/80 flex items-center justify-between text-[10px] text-neutral-400">
+                  <span>Continuous RSS ingest active</span>
+                  <span className="text-blue-600 font-bold">{filteredNews.length} signals</span>
+                </div>
+              </OrganicBlobCard>
+
+              {/* Mini Audio Synthesis Pulse Bubble */}
+              <div className="relative overflow-hidden rounded-[36px] border border-white/90 bg-white/90 p-5 shadow-[0_12px_36px_rgba(60,50,35,0.06)] backdrop-blur-xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex items-end gap-1 h-5">
                     {[1, 2, 3, 4, 5].map((i) => (
@@ -557,15 +669,14 @@ export default function FeedPage() {
                         key={i}
                         className="w-1 bg-gradient-to-t from-pink-500 to-purple-600 rounded-full"
                         style={{
-                          animation: `mofm-soundwave 1.${i * 2}s ease-in-out infinite`,
                           height: `${8 + (i * 3)}px`,
                         }}
                       />
                     ))}
                   </div>
                   <div>
-                    <div className="text-[11px] font-bold text-neutral-900">Live Synthesis Pulse</div>
-                    <div className="text-[9px] text-neutral-400">Autonomous RSS ingest active</div>
+                    <div className="text-[11px] font-bold text-neutral-900">Synthesis Radar Pulse</div>
+                    <div className="text-[9px] text-neutral-400">Live intelligence pipeline</div>
                   </div>
                 </div>
                 <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-neutral-100 text-neutral-500">
@@ -575,79 +686,83 @@ export default function FeedPage() {
             </div>
 
             {/* ---------------------------------------------------------------- */}
-            {/* POD 3: Secondary Editorial Cards (Morphing Organic Blobs)         */}
+            {/* BLOB 3: Secondary Editorial Blobs (Irregular Lobe Seed = 3 & 4)   */}
             {/* ---------------------------------------------------------------- */}
             {secondaryBlogs.map((blog, idx) => (
-              <div
-                key={blog.id}
-                onClick={() => setReadingItem({ type: "blog", item: blog })}
-                className="group lg:col-span-4 cursor-pointer transition-all duration-300 hover:-translate-y-1"
-              >
-                <div className={`relative h-full overflow-hidden rounded-[40px] border border-white/90 p-6 sm:p-7 shadow-[0_18px_48px_rgba(60,50,35,0.07)] backdrop-blur-2xl ${
-                  idx === 0
-                    ? "bg-gradient-to-br from-white/95 via-purple-50/25 to-pink-50/20"
-                    : "bg-gradient-to-br from-white/95 via-amber-50/25 to-rose-50/20"
-                }`}>
-                  <div className="pointer-events-none absolute inset-x-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-white to-transparent opacity-90" />
-                  
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="rounded-full bg-neutral-100/90 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-neutral-700">
-                      Editorial Deep Dive
-                    </span>
-                    <span className="text-[10px] font-semibold text-neutral-400 flex items-center gap-1">
-                      <HiOutlineClock className="h-3 w-3" /> {estimateReadTime(blog.content_html || blog.excerpt)}
-                    </span>
+              <div key={blog.id} className="lg:col-span-4">
+                <OrganicBlobCard
+                  seed={idx + 3}
+                  lobes={8}
+                  irregularity={0.21}
+                  gradientClass={
+                    idx === 0
+                      ? "from-white/95 via-purple-50/25 to-pink-50/20"
+                      : "from-white/95 via-amber-50/25 to-rose-50/20"
+                  }
+                  onClick={() => setReadingItem({ type: "blog", item: blog })}
+                  className="min-h-[360px]"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="rounded-full bg-neutral-100/90 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-neutral-700">
+                        Editorial Deep Dive
+                      </span>
+                      <span className="text-[10px] font-semibold text-neutral-400 flex items-center gap-1">
+                        <HiOutlineClock className="h-3 w-3" /> {estimateReadTime(blog.content_html || blog.excerpt)}
+                      </span>
+                    </div>
+
+                    {blog.cover_image_url && (
+                      <div className="mb-3.5 aspect-[16/9] w-full overflow-hidden rounded-2xl bg-neutral-100 ring-1 ring-black/5">
+                        <img src={blog.cover_image_url} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      </div>
+                    )}
+
+                    <h3 className="text-sm sm:text-base font-black text-neutral-900 leading-snug group-hover:text-purple-600 transition-colors line-clamp-2">
+                      {blog.title}
+                    </h3>
+                    {blog.excerpt && (
+                      <p className="mt-1.5 text-xs text-neutral-500 leading-relaxed line-clamp-2">
+                        {blog.excerpt}
+                      </p>
+                    )}
                   </div>
 
-                  {blog.cover_image_url && (
-                    <div className="mb-4 aspect-[16/9] w-full overflow-hidden rounded-2xl bg-neutral-100 ring-1 ring-black/5">
-                      <img src={blog.cover_image_url} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    </div>
-                  )}
-
-                  <h3 className="text-base font-bold text-neutral-900 leading-snug group-hover:text-purple-600 transition-colors line-clamp-2">
-                    {blog.title}
-                  </h3>
-                  {blog.excerpt && (
-                    <p className="mt-2 text-xs text-neutral-500 leading-relaxed line-clamp-2">
-                      {blog.excerpt}
-                    </p>
-                  )}
-
-                  <div className="mt-5 flex items-center gap-1.5 text-xs font-bold text-neutral-900 group-hover:text-purple-600 transition-colors">
+                  <div className="mt-4 flex items-center gap-1.5 text-xs font-black text-neutral-900 group-hover:text-purple-600 transition-colors">
                     <span>Read Analysis</span>
                     <HiOutlineArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
                   </div>
-                </div>
+                </OrganicBlobCard>
               </div>
             ))}
 
             {/* ---------------------------------------------------------------- */}
-            {/* POD 4: Obsidian Alpha Dispatch (High-Contrast Newsletter Pod)     */}
+            {/* BLOB 4: Obsidian Alpha Dispatch (Irregular Dark Amoeba Seed = 5)  */}
             {/* ---------------------------------------------------------------- */}
-            <div className="lg:col-span-4 relative overflow-hidden rounded-[40px] border border-white/15 bg-neutral-950 p-7 shadow-[0_24px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl text-white">
-              {/* Internal Iridescent Ambient Spots */}
-              <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-gradient-to-br from-rose-500/30 to-purple-600/30 blur-2xl" />
-              <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-gradient-to-tr from-blue-500/20 to-indigo-600/20 blur-2xl" />
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-
-              <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
-                <div>
-                  <div className="flex items-center gap-2.5 mb-3">
+            <div className="lg:col-span-4">
+              <OrganicBlobCard
+                seed={5}
+                lobes={9}
+                irregularity={0.24}
+                tone="dark"
+                className="min-h-[360px] text-white"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2.5">
                     <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-tr from-pink-500 to-purple-600 text-white shadow-md">
                       <HiOutlineEnvelopeOpen className="h-4.5 w-4.5" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black uppercase tracking-wider text-white">Alpha Dispatch</h3>
-                      <p className="text-[10px] text-neutral-400">Weekly intelligence curation</p>
+                      <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white">Alpha Dispatch</h3>
+                      <p className="text-[10px] text-neutral-400">Weekly intelligence drops</p>
                     </div>
                   </div>
                   <p className="text-xs text-neutral-300 leading-relaxed">
-                    Exclusive prompts, engineering breakthroughs, and synthesis reports delivered directly to your inbox.
+                    Exclusive system prompts, research models, and digital culture delivered directly to your inbox.
                   </p>
                 </div>
 
-                <form onSubmit={handleSubscribe} className="space-y-2.5 pt-2">
+                <form onSubmit={handleSubscribe} className="space-y-2.5 pt-3">
                   <input
                     type="email"
                     value={email}
@@ -673,11 +788,11 @@ export default function FeedPage() {
                     </div>
                   )}
                 </form>
-              </div>
+              </OrganicBlobCard>
             </div>
 
             {/* ---------------------------------------------------------------- */}
-            {/* POD 5: Matrix Editorial Stream Archive (Remaining Articles)       */}
+            {/* BLOB 5: Archive Pebble Cluster (Remaining Articles)               */}
             {/* ---------------------------------------------------------------- */}
             {remainingBlogs.length > 0 && (
               <div className="lg:col-span-12 pt-4">
@@ -687,26 +802,32 @@ export default function FeedPage() {
                   <span className="text-[10px] text-neutral-400">({remainingBlogs.length} articles)</span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {remainingBlogs.map((blog) => (
-                    <div
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {remainingBlogs.map((blog, idx) => (
+                    <OrganicBlobCard
                       key={blog.id}
+                      seed={idx + 6}
+                      lobes={7}
+                      irregularity={0.18}
+                      gradientClass="from-white/95 via-white/85 to-neutral-50/50"
                       onClick={() => setReadingItem({ type: "blog", item: blog })}
-                      className="group cursor-pointer rounded-3xl border border-white/80 bg-white/85 p-5 shadow-[0_8px_24px_rgba(60,50,35,0.05)] backdrop-blur-xl transition-all hover:bg-white hover:shadow-[0_12px_32px_rgba(60,50,35,0.09)] hover:-translate-y-0.5"
+                      className="min-h-[160px]"
                     >
-                      <div className="flex items-center justify-between gap-2 mb-2 text-[10px] text-neutral-400">
-                        <span>{formatDate(blog.published_at || blog.created_at) || "Archive"}</span>
-                        <span>{estimateReadTime(blog.content_html || blog.excerpt)}</span>
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2 text-[10px] text-neutral-400">
+                          <span>{formatDate(blog.published_at || blog.created_at) || "Archive"}</span>
+                          <span>{estimateReadTime(blog.content_html || blog.excerpt)}</span>
+                        </div>
+                        <h4 className="text-xs sm:text-sm font-bold leading-snug text-neutral-900 group-hover:text-rose-600 transition-colors line-clamp-2">
+                          {blog.title}
+                        </h4>
+                        {blog.excerpt && (
+                          <p className="mt-1.5 text-[11px] text-neutral-500 leading-relaxed line-clamp-2">
+                            {blog.excerpt}
+                          </p>
+                        )}
                       </div>
-                      <h4 className="text-xs font-bold leading-snug text-neutral-900 group-hover:text-rose-600 transition-colors line-clamp-2">
-                        {blog.title}
-                      </h4>
-                      {blog.excerpt && (
-                        <p className="mt-1.5 text-[11px] text-neutral-500 leading-relaxed line-clamp-2">
-                          {blog.excerpt}
-                        </p>
-                      )}
-                    </div>
+                    </OrganicBlobCard>
                   ))}
                 </div>
               </div>
@@ -715,9 +836,7 @@ export default function FeedPage() {
         )}
       </div>
 
-      {/* -------------------------------------------------------------------- */}
-      {/* Global Interactive Deep Dive Reader Modal                            */}
-      {/* -------------------------------------------------------------------- */}
+      {/* Global Interactive Deep Dive Reader Modal */}
       {readingItem && (
         <ReaderModal
           item={readingItem.item}
