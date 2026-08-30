@@ -1,14 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
-import { Poppins } from "next/font/google";
-import { HiOutlineSparkles } from "react-icons/hi2";
-
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
-});
 
 // ---------------------------------------------------------------------------
 // Procedural Organic SVG Path Generator for Smooth Amorphous Splines
@@ -44,42 +36,30 @@ function generateSmoothBlob(w, h, seed = 0, lobes = 9, irregularity = 0.22) {
 }
 
 // ---------------------------------------------------------------------------
-// Solid Organic Blob Component (Zero Hover Effects, Screen-Filling Fluidity)
+// Static Organic Blob Component (Pure Aesthetics, Zero Movement/Hover)
 // ---------------------------------------------------------------------------
-function SolidOrganicBlob({
-  id,
+function PureOrganicBlob({
   width,
   height,
   seed = 1,
   lobes = 9,
   irregularity = 0.22,
-  tone = "white", // "white" | "black" | "smoke" | "graphite"
-  floatDuration = 22,
-  floatDelay = 0,
+  tone = "white", // "white" | "black" | "smoke"
   className = "",
   style = {},
-  label = "",
-  mouseSpringX,
-  mouseSpringY,
-  parallaxFactor = 0.03,
 }) {
   const pathD = useMemo(
     () => generateSmoothBlob(width, height, seed, lobes, irregularity),
     [width, height, seed, lobes, irregularity]
   );
 
-  const translateX = useTransform(mouseSpringX, (x) => x * parallaxFactor);
-  const translateY = useTransform(mouseSpringY, (y) => y * parallaxFactor);
-
   const toneConfigs = {
     white: {
-      fill: "bg-white/94",
+      fill: "bg-white/95",
       borderStroke: "rgba(255, 255, 255, 0.95)",
       innerStroke: "rgba(0, 0, 0, 0.03)",
       shadow: "drop-shadow(0 40px 90px rgba(60,50,35,0.12)) drop-shadow(0 2px 8px rgba(0,0,0,0.03))",
       sheen: "from-white via-white/80 to-transparent",
-      badge: "bg-neutral-900 text-white",
-      textColor: "text-neutral-900",
     },
     black: {
       fill: "bg-neutral-950/95",
@@ -87,57 +67,29 @@ function SolidOrganicBlob({
       innerStroke: "rgba(255, 255, 255, 0.08)",
       shadow: "drop-shadow(0 44px 100px rgba(0,0,0,0.5)) drop-shadow(0 6px 20px rgba(0,0,0,0.3))",
       sheen: "from-white/30 via-white/10 to-transparent",
-      badge: "bg-white text-neutral-950",
-      textColor: "text-white",
     },
     smoke: {
-      fill: "bg-neutral-200/85",
+      fill: "bg-neutral-200/90",
       borderStroke: "rgba(255, 255, 255, 0.9)",
       innerStroke: "rgba(0, 0, 0, 0.05)",
       shadow: "drop-shadow(0 36px 85px rgba(60,50,35,0.09))",
       sheen: "from-white via-white/70 to-transparent",
-      badge: "bg-neutral-800 text-white",
-      textColor: "text-neutral-800",
-    },
-    graphite: {
-      fill: "bg-neutral-900/90",
-      borderStroke: "rgba(255, 255, 255, 0.16)",
-      innerStroke: "rgba(255, 255, 255, 0.06)",
-      shadow: "drop-shadow(0 38px 85px rgba(0,0,0,0.35))",
-      sheen: "from-white/20 via-transparent to-transparent",
-      badge: "bg-white/90 text-neutral-900",
-      textColor: "text-neutral-100",
     },
   };
 
   const cfg = toneConfigs[tone] || toneConfigs.white;
 
   return (
-    <motion.div
+    <div
       style={{
         width,
         height,
         filter: cfg.shadow,
-        x: translateX,
-        y: translateY,
         ...style,
       }}
-      className={`absolute select-none pointer-events-auto ${className}`}
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{
-        opacity: 1,
-        scale: [1, 1.02, 0.985, 1],
-        rotate: [-1.2, 1.4, -1.6, -1.2],
-        y: [-12, 14, -8, -12],
-      }}
-      transition={{
-        opacity: { duration: 1.2, ease: "easeOut" },
-        scale: { duration: floatDuration, repeat: Infinity, ease: "easeInOut", delay: floatDelay },
-        rotate: { duration: floatDuration * 1.2, repeat: Infinity, ease: "easeInOut", delay: floatDelay },
-        y: { duration: floatDuration * 0.95, repeat: Infinity, ease: "easeInOut", delay: floatDelay },
-      }}
+      className={`absolute select-none pointer-events-none ${className}`}
     >
-      {/* Morphing Liquid SVG Container */}
+      {/* Liquid SVG Backdrop */}
       <div
         className={`absolute inset-0 ${cfg.fill} backdrop-blur-3xl`}
         style={{
@@ -145,13 +97,13 @@ function SolidOrganicBlob({
         }}
       />
 
-      {/* Internal Liquid Refraction Gradient */}
+      {/* Top Specular Sheen */}
       <div
         className={`pointer-events-none absolute inset-x-0 top-0 h-[2.5px] bg-gradient-to-r ${cfg.sheen} opacity-90`}
         style={{ clipPath: `path('${pathD}')` }}
       />
 
-      {/* Specular SVG Border Hull */}
+      {/* SVG Specular Rim */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${width} ${height}`}>
         <path
           d={pathD}
@@ -168,27 +120,12 @@ function SolidOrganicBlob({
           className="blur-[1px]"
         />
       </svg>
-
-      {/* Centered Safe-Area Preview Badge / Label */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center pointer-events-none">
-        {label && (
-          <div className="flex flex-col items-center gap-2">
-            <span className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-wider shadow-sm ${cfg.badge}`}>
-              <HiOutlineSparkles className="h-3.5 w-3.5" />
-              <span>{label}</span>
-            </span>
-            <span className={`text-xs font-semibold opacity-60 ${cfg.textColor}`}>
-              Solid Organic Blob #{id}
-            </span>
-          </div>
-        )}
-      </div>
-    </motion.div>
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Main Organic 3-Blob Full-Screen Space-Filling Stage
+// Main 3 Solid Space-Filling Blobs (Zero Empty Space, Zero Movement)
 // ---------------------------------------------------------------------------
 export default function FeedPage() {
   const [viewport, setViewport] = useState({ w: 1440, h: 900 });
@@ -205,121 +142,57 @@ export default function FeedPage() {
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
+  // Generous dimensions ensuring generous overlap with 0 background gaps
+  const blob1W = Math.max(800, Math.round(viewport.w * 0.82));
+  const blob1H = Math.max(700, Math.round(viewport.h * 1.15));
 
-  const springConfig = { damping: 30, stiffness: 60 };
-  const mouseSpringX = useSpring(mouseX, springConfig);
-  const mouseSpringY = useSpring(mouseY, springConfig);
+  const blob2W = Math.max(750, Math.round(viewport.w * 0.78));
+  const blob2H = Math.max(650, Math.round(viewport.h * 1.05));
 
-  function handleMouseMove(e) {
-    const { innerWidth, innerHeight } = window;
-    mouseX.set(((e.clientX - innerWidth / 2) / (innerWidth / 2)) * 40);
-    mouseY.set(((e.clientY - innerHeight / 2) / (innerHeight / 2)) * 40);
-  }
-
-  // Calculate dynamic blob sizes based on viewport so they 100% fill and overlap the entire space
-  const blob1Width = Math.max(750, Math.round(viewport.w * 0.72));
-  const blob1Height = Math.max(620, Math.round(viewport.h * 0.88));
-
-  const blob2Width = Math.max(720, Math.round(viewport.w * 0.68));
-  const blob2Height = Math.max(580, Math.round(viewport.h * 0.82));
-
-  const blob3Width = Math.max(680, Math.round(viewport.w * 0.62));
-  const blob3Height = Math.max(540, Math.round(viewport.h * 0.76));
+  const blob3W = Math.max(780, Math.round(viewport.w * 0.80));
+  const blob3H = Math.max(650, Math.round(viewport.h * 0.95));
 
   return (
-    <div
-      onMouseMove={handleMouseMove}
-      className={`${poppins.className} relative h-screen w-screen bg-[#f4f2ee] text-neutral-900 overflow-hidden select-none`}
-    >
-      {/* ------------------------------------------------------------------ */}
-      {/* Ambient Depth Atmospheric Shading                                  */}
-      {/* ------------------------------------------------------------------ */}
+    <div className="relative h-screen w-screen bg-[#f4f2ee] overflow-hidden select-none">
+      {/* Ambient Radial Atmosphere */}
       <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(ellipse_90%_90%_at_50%_-10%,rgba(235,230,220,0.9),rgba(244,242,238,1))]" />
       
-      <div className="pointer-events-none fixed -top-40 -left-40 h-[700px] w-[700px] rounded-full bg-neutral-300/30 blur-[140px]" />
-      <div className="pointer-events-none fixed top-1/4 -right-40 h-[800px] w-[800px] rounded-full bg-neutral-400/25 blur-[160px]" />
-      <div className="pointer-events-none fixed -bottom-40 left-1/3 h-[700px] w-[700px] rounded-full bg-stone-300/25 blur-[150px]" />
-
       {/* ------------------------------------------------------------------ */}
-      {/* 3 Space-Filling Organic Blobs (100% Viewport Covered)              */}
+      {/* 3 Giant Static Interlocking Blobs (100% Screen Covered, 0 Dead Space) */}
       {/* ------------------------------------------------------------------ */}
       <div className="relative z-10 w-full h-full overflow-hidden">
-        {/* BLOB 1: Top-Left Titan Pod (White Glass) */}
-        {/* Spans across top-left, center, and bottom-left */}
-        <SolidOrganicBlob
-          id="01"
-          label="Titan Apex Pod"
-          width={blob1Width}
-          height={blob1Height}
+        {/* BLOB 1: Left / Top-Left Titan Pod (White Glass) */}
+        <PureOrganicBlob
+          width={blob1W}
+          height={blob1H}
           seed={3}
           lobes={9}
           irregularity={0.22}
           tone="white"
-          floatDuration={24}
-          floatDelay={0}
-          className="-top-[12%] -left-[14%] z-10"
-          mouseSpringX={mouseSpringX}
-          mouseSpringY={mouseSpringY}
-          parallaxFactor={0.03}
+          className="-top-[15%] -left-[18%] z-10"
         />
 
-        {/* BLOB 3: Top-Right Smoke Anchor (Smoke Shade) */}
-        {/* Fills the entire top-right & upper-middle quadrant that was previously empty */}
-        <SolidOrganicBlob
-          id="03"
-          label="Horizon Smoke Pod"
-          width={blob3Width}
-          height={blob3Height}
+        {/* BLOB 2: Top-Right Smoke Pod (Warm Smoke Glass) - Closes the gap */}
+        <PureOrganicBlob
+          width={blob2W}
+          height={blob2H}
           seed={14}
           lobes={9}
           irregularity={0.24}
           tone="smoke"
-          floatDuration={26}
-          floatDelay={4}
-          className="-top-[16%] right-[-12%] z-20"
-          mouseSpringX={mouseSpringX}
-          mouseSpringY={mouseSpringY}
-          parallaxFactor={0.04}
+          className="-top-[18%] -right-[15%] z-20"
         />
 
-        {/* BLOB 2: Center-Right Obsidian Void (Deep Black) */}
-        {/* Fills the center-right, bottom-right, and overlaps Blobs 1 & 3 */}
-        <SolidOrganicBlob
-          id="02"
-          label="Obsidian Nexus Void"
-          width={blob2Width}
-          height={blob2Height}
+        {/* BLOB 3: Bottom-Right Obsidian Void (Deep Black) */}
+        <PureOrganicBlob
+          width={blob3W}
+          height={blob3H}
           seed={9}
           lobes={9}
           irregularity={0.25}
           tone="black"
-          floatDuration={20}
-          floatDelay={2}
-          className="top-[24%] right-[-10%] z-30"
-          mouseSpringX={mouseSpringX}
-          mouseSpringY={mouseSpringY}
-          parallaxFactor={-0.035}
+          className="bottom-[-18%] -right-[12%] z-30"
         />
-      </div>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Top Floating Control Capsule: Canvas Stage HUD                      */}
-      {/* ------------------------------------------------------------------ */}
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full border border-white/80 bg-white/90 px-6 py-2.5 shadow-[0_16px_40px_rgba(60,50,35,0.12)] backdrop-blur-2xl">
-        <div className="flex items-center gap-2 pr-3 border-r border-neutral-200">
-          <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-ping" />
-          <span className="text-xs font-black uppercase tracking-wider text-neutral-900">
-            3 Space-Filling Organic Blobs
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-600">
-          <span>Zero Dead Space</span>
-          <span className="text-neutral-300">•</span>
-          <span className="text-neutral-400">Seamlessly Interlocked</span>
-        </div>
       </div>
     </div>
   );
