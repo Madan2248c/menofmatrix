@@ -294,7 +294,7 @@ export function StoryDeck(props) {
 // 2x2 animated posts grid – cycles posts sequentially, flipping one card at a time.
 // Centred in the bottom half of the panel with a transparent container and dot indicators.
 // ---------------------------------------------------------------------------
-export function MiniPostsGrid({ posts = [], gridRef, onOpenPost }) {
+export function MiniPostsGrid({ posts = [], gridRef }) {
   const count = posts?.length || 0;
   const [cellPostIndices, setCellPostIndices] = useState([0, 1, 2, 3]);
   const [flippingCell, setFlippingCell] = useState(null);
@@ -339,11 +339,11 @@ export function MiniPostsGrid({ posts = [], gridRef, onOpenPost }) {
     return (
       <div
         ref={gridRef}
-        className="pointer-events-none absolute bottom-1/4 left-1/2 -translate-x-1/2 translate-y-1/2"
+        className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
       >
         <div className="grid grid-cols-2 gap-2 p-1">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-[74px] w-[74px] rounded-2xl bg-neutral-100 flex items-center justify-center text-neutral-300">
+            <div key={i} className="h-[74px] w-[74px] rounded-2xl bg-white/80 shadow-sm ring-1 ring-black/5 flex items-center justify-center text-neutral-300">
               <SiInstagram className="h-6 w-6" />
             </div>
           ))}
@@ -358,60 +358,88 @@ export function MiniPostsGrid({ posts = [], gridRef, onOpenPost }) {
   return (
     <div
       ref={gridRef}
-      className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2"
+      className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
     >
       <div
-        className="pointer-events-auto grid grid-cols-2 gap-2 rounded-3xl bg-white/90 p-2.5 shadow-[0_12px_28px_rgba(60,50,35,0.14)] backdrop-blur-md ring-1 ring-black/5"
+        className="pointer-events-auto flex flex-col items-center gap-2"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
-        {cellPostIndices.map((postIdx, cellIdx) => {
-          const actualIdx = postIdx % count;
-          const post = posts[actualIdx];
-          const img = post?.thumbnail_url || post?.media_url;
-          const isReel = post?.media_product_type === "REELS";
-          const isFlipping = flippingCell === cellIdx;
+        {/* Transparent Grid */}
+        <div className="grid grid-cols-2 gap-2 p-1 bg-transparent">
+          {cellPostIndices.map((postIdx, cellIdx) => {
+            const actualIdx = postIdx % count;
+            const post = posts[actualIdx];
+            const img = post?.thumbnail_url || post?.media_url;
+            const isReel = post?.media_product_type === "REELS";
+            const isFlipping = flippingCell === cellIdx;
+            const permalink = post?.permalink || "https://instagram.com/menofmatrix.ai";
 
-          return (
-            <button
-              key={cellIdx}
-              type="button"
-              onClick={() => onOpenPost && onOpenPost(actualIdx)}
-              aria-label={`View post ${cellIdx + 1}`}
-              className="group relative h-[74px] w-[74px] focus:outline-none"
-              style={{ perspective: "400px" }}
-            >
-              <div
-                className="relative h-full w-full overflow-hidden rounded-2xl bg-neutral-100 shadow-sm ring-1 ring-black/5"
-                style={{
-                  transform: isFlipping ? "rotateY(90deg)" : "rotateY(0deg)",
-                  transition: "transform 0.3s cubic-bezier(0.4,0,0.2,1)",
-                  transformStyle: "preserve-3d",
-                  backfaceVisibility: "hidden",
-                }}
+            return (
+              <a
+                key={cellIdx}
+                href={permalink}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Open Instagram post ${actualIdx + 1}`}
+                className="group relative h-[74px] w-[74px] focus:outline-none"
+                style={{ perspective: "400px" }}
               >
-                {img ? (
-                  <img
-                    src={img}
-                    alt=""
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-                    draggable={false}
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-neutral-100 text-neutral-400">
-                    <SiInstagram className="h-6 w-6" />
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
-                {isReel && (
-                  <span className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white backdrop-blur-xs shadow-xs">
-                    <HiOutlinePlay className="h-2.5 w-2.5" />
-                  </span>
-                )}
-              </div>
-            </button>
-          );
-        })}
+                <div
+                  className="relative h-full w-full overflow-hidden rounded-2xl bg-white/90 backdrop-blur-md shadow-[0_8px_20px_rgba(0,0,0,0.08)] ring-1 ring-black/5 transition-transform duration-200 group-hover:scale-105"
+                  style={{
+                    transform: isFlipping ? "rotateY(90deg)" : "rotateY(0deg)",
+                    transition: "transform 0.3s cubic-bezier(0.4,0,0.2,1)",
+                    transformStyle: "preserve-3d",
+                    backfaceVisibility: "hidden",
+                  }}
+                >
+                  {img ? (
+                    <img
+                      src={img}
+                      alt=""
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                      draggable={false}
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-neutral-100 text-neutral-400">
+                      <SiInstagram className="h-6 w-6" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
+                  {isReel && (
+                    <span className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white backdrop-blur-xs shadow-xs">
+                      <HiOutlinePlay className="h-2.5 w-2.5" />
+                    </span>
+                  )}
+                </div>
+              </a>
+            );
+          })}
+        </div>
+
+        {/* Dots under the grid */}
+        {count > 4 && (
+          <div className="flex items-center gap-1.5 bg-white/65 backdrop-blur-md py-1 px-2.5 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.04)] ring-1 ring-black/5">
+            {Array.from({ length: Math.min(count, 8) }).map((_, i) => {
+              const isVisible = visibleIndices.has(i);
+              const isLatestFlipped = latestFlippedIndex % count === i;
+
+              return (
+                <div
+                  key={i}
+                  className={`rounded-full transition-all duration-300 ${
+                    isLatestFlipped
+                      ? "h-1.5 w-3.5 bg-rose-500"
+                      : isVisible
+                      ? "h-1.5 w-1.5 bg-neutral-700"
+                      : "h-1.5 w-1.5 bg-neutral-300"
+                  }`}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
