@@ -1,5 +1,6 @@
 import { Urbanist } from "next/font/google";
 import Footer from "@/components/Footer";
+import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 
 const urbanist = Urbanist({
@@ -19,7 +20,7 @@ export default function RootLayout({ children }) {
         className="flex min-h-dvh flex-col overflow-x-hidden"
         suppressHydrationWarning
       >
-        {children}
+        <SessionProvider>{children}</SessionProvider>
         <Footer />
       </body>
     </html>

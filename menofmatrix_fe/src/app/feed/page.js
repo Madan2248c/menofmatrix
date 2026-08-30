@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import LlmUsageWidget from "@/components/LlmUsageWidget";
 
 export default function FeedPage() {
   const [size, setSize] = useState({ w: 1440, h: 900 });
@@ -90,6 +91,11 @@ export default function FeedPage() {
         {/* Right boundary: smoke meets white — very subtle light seam */}
         <path d={curveRight} fill="none" stroke="rgba(200,196,190,0.5)" strokeWidth="1.2" />
       </svg>
+
+      {/* LLM Usage Widget — floating above organic backdrop */}
+      <div className="absolute z-50 top-4 right-4 md:top-6 md:right-6 max-h-[calc(100vh-2rem)] overflow-auto">
+        <LlmUsageWidget />
+      </div>
     </div>
   );
 }
