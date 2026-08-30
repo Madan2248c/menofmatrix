@@ -30,15 +30,22 @@ export default function Dashboard() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!getToken()) {
+    const token = getToken();
+    if (!token) {
       router.replace("/login");
       return;
     }
-    setReady(true);
+    
+    // Fetch social data and mark ready
     fetch("/api/social")
       .then((r) => r.json())
-      .then(setSocial)
-      .catch(() => {});
+      .then((data) => {
+        setSocial(data);
+        setReady(true);
+      })
+      .catch(() => {
+        setReady(true);
+      });
   }, [router]);
 
   const connectInstagram = async () => {
@@ -84,7 +91,7 @@ export default function Dashboard() {
         onConnect={connectYoutube}
       />
       <div className="w-96 text-center text-xs text-neutral-400">
-        Twitter needs no connection — it's read live from the public profile page.
+        Twitter needs no connection — it&apos;s read live from the public profile page.
       </div>
       <button onClick={logout} className="mt-4 text-xs text-neutral-400 underline">
         Log out
