@@ -51,7 +51,7 @@ export function StoryCircle({ stories = [], source, panelRef, onOpenStory }) {
   return (
     <div
       ref={panelRef}
-      className="pointer-events-auto absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5 select-none z-10"
+      className="pointer-events-auto absolute top-5 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 select-none z-10"
     >
       <button
         type="button"

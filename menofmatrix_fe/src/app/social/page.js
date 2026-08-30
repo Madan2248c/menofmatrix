@@ -12,7 +12,7 @@ import {
 } from "react-icons/hi2";
 import { Tweet, useTweet } from "react-tweet";
 import "react-tweet/theme.css";
-import LeftPanel, { StoryDeck, PostDeck } from "./LeftPanel";
+import LeftPanel, { StoryDeck, PostDeck, StoryCircle, StoryModal } from "./LeftPanel";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600"] });
 
@@ -571,9 +571,10 @@ function TweetsBox({
             <SiX className="h-3 w-3 text-neutral-900" />
             Latest on X
           </span>
-          {twitter?.username && (
-            <span className="text-[10px] text-neutral-400">@{twitter.username}</span>
-          )}
+          <span className="flex items-center gap-1 text-[10px] text-neutral-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            {twitter?.username ? `@${twitter.username}` : "Live Feed"}
+          </span>
         </div>
         <div className="flex flex-1 flex-col justify-evenly gap-3">
           {tweets.slice(0, 2).map((tweet, i) => (
@@ -944,7 +945,13 @@ function TopBox({
             <SiYoutube className="h-3.5 w-3.5 text-red-600" />
             More on YouTube
           </span>
-          <span className="text-[9px] text-neutral-400">Broadcasts</span>
+          <span className="flex items-center gap-1.5 rounded-full bg-red-500/10 px-2 py-0.5 text-[9px] font-medium text-red-600">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+            </span>
+            Broadcasts
+          </span>
         </div>
         <div className="flex min-h-0 flex-1 gap-4">
           <div className="flex min-h-0 w-[45%] flex-col gap-2">
