@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { Poppins } from "next/font/google";
 import {
   HiOutlinePencilSquare,
@@ -10,6 +11,8 @@ import {
   HiOutlineArrowTopRightOnSquare,
   HiOutlineNewspaper,
   HiMiniSignal,
+  HiOutlineSparkles,
+  HiOutlineArrowRight,
 } from "react-icons/hi2";
 
 const poppins = Poppins({
@@ -447,6 +450,42 @@ export default function FeedPage() {
             color={cat.color}
           />
         ))}
+      </div>
+
+      {/* -- Glassmorphic 'Will be soon released' Blur Overlay */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/40 backdrop-blur-md px-4">
+        <div className="relative mx-auto flex w-full max-w-md flex-col items-center overflow-hidden rounded-3xl border border-white/90 bg-white/85 p-8 text-center shadow-[0_20px_50px_rgba(60,50,35,0.12),0_1px_3px_rgba(0,0,0,0.04)] backdrop-blur-2xl">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-90" />
+
+          {/* Status Pill */}
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-neutral-200/80 bg-white/90 px-3.5 py-1.5 shadow-xs backdrop-blur-md">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
+            </span>
+            <span className="text-[11px] font-semibold tracking-wider uppercase text-neutral-600">
+              In Development
+            </span>
+          </div>
+
+          <h2 className="text-xl font-bold tracking-tight text-neutral-900 sm:text-2xl">
+            Feed & Publications
+          </h2>
+          <p className="mt-2 text-xs sm:text-sm text-neutral-500 leading-relaxed max-w-xs">
+            Our curated articles, newsletter dispatches, and alpha insights will be soon released.
+          </p>
+
+          <div className="mt-6">
+            <Link
+              href="/social"
+              className="group flex items-center gap-2 rounded-full bg-neutral-900 px-5 py-2.5 text-xs font-semibold text-white shadow-md transition-all hover:bg-neutral-800 hover:shadow-lg active:scale-95"
+            >
+              <HiOutlineSparkles className="h-4 w-4 text-amber-400 transition-transform group-hover:rotate-12" />
+              <span>Explore Social Collective</span>
+              <HiOutlineArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );
