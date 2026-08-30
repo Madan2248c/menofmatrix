@@ -1,14 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { Poppins } from "next/font/google";
-import {
-  HiOutlineSparkles,
-  HiOutlineCubeTransparent,
-  HiOutlineArrowPath,
-  HiOutlineEye,
-} from "react-icons/hi2";
+import { HiOutlineSparkles } from "react-icons/hi2";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -16,18 +11,18 @@ const poppins = Poppins({
 });
 
 // ---------------------------------------------------------------------------
-// Procedural Organic SVG Path Generator for Morphing Splines
+// Procedural Organic SVG Path Generator for Smooth Amorphous Splines
 // ---------------------------------------------------------------------------
-function generateSmoothBlob(w, h, seed = 0, lobes = 8, irregularity = 0.22) {
+function generateSmoothBlob(w, h, seed = 0, lobes = 9, irregularity = 0.24) {
   const cx = w / 2;
   const cy = h / 2;
-  const rx = (w / 2) * 0.92;
-  const ry = (h / 2) * 0.92;
+  const rx = (w / 2) * 0.94;
+  const ry = (h / 2) * 0.94;
   const pts = [];
 
   for (let i = 0; i < lobes; i++) {
     const angle = (i / lobes) * Math.PI * 2 - Math.PI / 2;
-    const wave = 1 + irregularity * Math.sin(i * 2.7 + seed * 1.9) + (irregularity * 0.6) * Math.cos(i * 1.6 + seed * 2.3);
+    const wave = 1 + irregularity * Math.sin(i * 2.6 + seed * 1.8) + (irregularity * 0.55) * Math.cos(i * 1.5 + seed * 2.2);
     const x = cx + Math.cos(angle) * rx * wave;
     const y = cy + Math.sin(angle) * ry * wave;
     pts.push([Math.max(4, Math.min(w - 4, x)), Math.max(4, Math.min(h - 4, y))]);
@@ -49,17 +44,17 @@ function generateSmoothBlob(w, h, seed = 0, lobes = 8, irregularity = 0.22) {
 }
 
 // ---------------------------------------------------------------------------
-// Big Organic Amorphous Blob Pod Component
+// Solid Organic Blob Component (No Hover Effects, Pure Fluid Motion)
 // ---------------------------------------------------------------------------
-function LivingOrganicBlob({
+function SolidOrganicBlob({
   id,
-  width = 600,
-  height = 500,
+  width = 800,
+  height = 650,
   seed = 1,
-  lobes = 8,
-  irregularity = 0.22,
-  tone = "white", // "white" | "black" | "smoke" | "glass" | "graphite"
-  floatDuration = 18,
+  lobes = 9,
+  irregularity = 0.24,
+  tone = "white", // "white" | "black" | "graphite"
+  floatDuration = 20,
   floatDelay = 0,
   className = "",
   style = {},
@@ -68,60 +63,42 @@ function LivingOrganicBlob({
   mouseSpringY,
   parallaxFactor = 0.03,
 }) {
-  const pathA = useMemo(() => generateSmoothBlob(width, height, seed, lobes, irregularity), [width, height, seed, lobes, irregularity]);
-  const pathB = useMemo(() => generateSmoothBlob(width, height, seed + 7, lobes, irregularity * 1.15), [width, height, seed, lobes, irregularity]);
-  const pathC = useMemo(() => generateSmoothBlob(width, height, seed + 14, lobes, irregularity * 0.9), [width, height, seed, lobes, irregularity]);
+  const pathD = useMemo(
+    () => generateSmoothBlob(width, height, seed, lobes, irregularity),
+    [width, height, seed, lobes, irregularity]
+  );
 
-  // Parallax translation driven by mouse motion
+  // Soft Parallax Translation
   const translateX = useTransform(mouseSpringX, (x) => x * parallaxFactor);
   const translateY = useTransform(mouseSpringY, (y) => y * parallaxFactor);
 
-  // Styling presets: White, Black, Smoke, Graphite, Glass
   const toneConfigs = {
     white: {
-      fill: "bg-white/92",
+      fill: "bg-white/94",
       borderStroke: "rgba(255, 255, 255, 0.95)",
-      innerStroke: "rgba(0, 0, 0, 0.04)",
-      shadow: "drop-shadow(0 32px 70px rgba(60,50,35,0.09)) drop-shadow(0 2px 6px rgba(0,0,0,0.03))",
+      innerStroke: "rgba(0, 0, 0, 0.03)",
+      shadow: "drop-shadow(0 36px 80px rgba(60,50,35,0.1)) drop-shadow(0 2px 8px rgba(0,0,0,0.03))",
       sheen: "from-white via-white/80 to-transparent",
       badge: "bg-neutral-900 text-white",
       textColor: "text-neutral-900",
     },
     black: {
       fill: "bg-neutral-950/95",
-      borderStroke: "rgba(255, 255, 255, 0.18)",
+      borderStroke: "rgba(255, 255, 255, 0.2)",
       innerStroke: "rgba(255, 255, 255, 0.08)",
-      shadow: "drop-shadow(0 36px 80px rgba(0,0,0,0.42)) drop-shadow(0 4px 12px rgba(0,0,0,0.25))",
+      shadow: "drop-shadow(0 40px 90px rgba(0,0,0,0.45)) drop-shadow(0 4px 16px rgba(0,0,0,0.3))",
       sheen: "from-white/30 via-white/10 to-transparent",
       badge: "bg-white text-neutral-950",
       textColor: "text-white",
     },
     graphite: {
       fill: "bg-neutral-900/90",
-      borderStroke: "rgba(255, 255, 255, 0.14)",
+      borderStroke: "rgba(255, 255, 255, 0.16)",
       innerStroke: "rgba(255, 255, 255, 0.06)",
-      shadow: "drop-shadow(0 30px 65px rgba(0,0,0,0.3))",
+      shadow: "drop-shadow(0 34px 75px rgba(0,0,0,0.32))",
       sheen: "from-white/20 via-transparent to-transparent",
       badge: "bg-white/90 text-neutral-900",
       textColor: "text-neutral-100",
-    },
-    smoke: {
-      fill: "bg-neutral-100/85",
-      borderStroke: "rgba(255, 255, 255, 0.9)",
-      innerStroke: "rgba(0, 0, 0, 0.05)",
-      shadow: "drop-shadow(0 28px 60px rgba(60,50,35,0.07))",
-      sheen: "from-white via-white/60 to-transparent",
-      badge: "bg-neutral-800 text-white",
-      textColor: "text-neutral-800",
-    },
-    glass: {
-      fill: "bg-white/60",
-      borderStroke: "rgba(255, 255, 255, 0.85)",
-      innerStroke: "rgba(255, 255, 255, 0.5)",
-      shadow: "drop-shadow(0 20px 50px rgba(60,50,35,0.06))",
-      sheen: "from-white via-white/40 to-transparent",
-      badge: "bg-neutral-900 text-white",
-      textColor: "text-neutral-900",
     },
   };
 
@@ -138,45 +115,44 @@ function LivingOrganicBlob({
         ...style,
       }}
       className={`absolute select-none pointer-events-auto ${className}`}
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.95 }}
       animate={{
         opacity: 1,
-        scale: [1, 1.03, 0.98, 1],
-        rotate: [-1.5, 2, -2, -1.5],
-        y: [-12, 14, -8, -12],
+        scale: [1, 1.025, 0.985, 1],
+        rotate: [-1.2, 1.5, -1.8, -1.2],
+        y: [-14, 16, -10, -14],
       }}
       transition={{
         opacity: { duration: 1.2, ease: "easeOut" },
         scale: { duration: floatDuration, repeat: Infinity, ease: "easeInOut", delay: floatDelay },
         rotate: { duration: floatDuration * 1.2, repeat: Infinity, ease: "easeInOut", delay: floatDelay },
-        y: { duration: floatDuration * 0.9, repeat: Infinity, ease: "easeInOut", delay: floatDelay },
+        y: { duration: floatDuration * 0.95, repeat: Infinity, ease: "easeInOut", delay: floatDelay },
       }}
-      whileHover={{ scale: 1.04, transition: { duration: 0.4, ease: "easeOut" } }}
     >
       {/* Morphing Liquid SVG Container */}
       <div
-        className={`absolute inset-0 ${cfg.fill} backdrop-blur-3xl transition-colors duration-700`}
+        className={`absolute inset-0 ${cfg.fill} backdrop-blur-3xl`}
         style={{
-          clipPath: `path('${pathA}')`,
+          clipPath: `path('${pathD}')`,
         }}
       />
 
       {/* Internal Liquid Refraction Gradient */}
       <div
         className={`pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r ${cfg.sheen} opacity-90`}
-        style={{ clipPath: `path('${pathA}')` }}
+        style={{ clipPath: `path('${pathD}')` }}
       />
 
       {/* Specular SVG Border Hull */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${width} ${height}`}>
         <path
-          d={pathA}
+          d={pathD}
           fill="none"
           stroke={cfg.borderStroke}
           strokeWidth="1.6"
         />
         <path
-          d={pathA}
+          d={pathD}
           fill="none"
           stroke={cfg.innerStroke}
           strokeWidth="4"
@@ -186,15 +162,15 @@ function LivingOrganicBlob({
       </svg>
 
       {/* Centered Safe-Area Preview Badge / Label */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center pointer-events-none">
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center pointer-events-none">
         {label && (
           <div className="flex flex-col items-center gap-2">
-            <span className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-[10px] font-black uppercase tracking-wider shadow-sm ${cfg.badge}`}>
-              <HiOutlineSparkles className="h-3 w-3" />
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-wider shadow-sm ${cfg.badge}`}>
+              <HiOutlineSparkles className="h-3.5 w-3.5" />
               <span>{label}</span>
             </span>
-            <span className={`text-[11px] font-medium opacity-60 ${cfg.textColor}`}>
-              Organic Fluid Cell #{id}
+            <span className={`text-xs font-semibold opacity-60 ${cfg.textColor}`}>
+              Solid Organic Blob #{id}
             </span>
           </div>
         )}
@@ -204,12 +180,9 @@ function LivingOrganicBlob({
 }
 
 // ---------------------------------------------------------------------------
-// Main Organic Blob Stage Page
+// Main Organic 3-Blob Canvas Stage Page
 // ---------------------------------------------------------------------------
 export default function FeedPage() {
-  const [activeTheme, setActiveTheme] = useState("monochrome"); // "monochrome" | "contrast" | "minimal"
-  const [motionIntensity, setMotionIntensity] = useState("normal"); // "gentle" | "normal" | "energetic"
-
   // Raw mouse coordinates for interactive parallax
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -221,12 +194,9 @@ export default function FeedPage() {
 
   function handleMouseMove(e) {
     const { innerWidth, innerHeight } = window;
-    // Map to centered coordinates: -1 to +1
-    mouseX.set((e.clientX - innerWidth / 2) / (innerWidth / 2) * 50);
-    mouseY.set((e.clientY - innerHeight / 2) / (innerHeight / 2) * 50);
+    mouseX.set(((e.clientX - innerWidth / 2) / (innerWidth / 2)) * 45);
+    mouseY.set(((e.clientY - innerHeight / 2) / (innerHeight / 2)) * 45);
   }
-
-  const speedMultiplier = motionIntensity === "gentle" ? 1.5 : motionIntensity === "energetic" ? 0.7 : 1;
 
   return (
     <div
@@ -234,18 +204,18 @@ export default function FeedPage() {
       className={`${poppins.className} relative min-h-screen w-full bg-[#f6f4f0] text-neutral-900 overflow-hidden select-none`}
     >
       {/* ------------------------------------------------------------------ */}
-      {/* Ambient Radial Mesh & Atmosphere                                   */}
+      {/* Ambient Radial Atmosphere                                          */}
       {/* ------------------------------------------------------------------ */}
-      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(240,235,225,0.8),rgba(246,244,240,1))]" />
+      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(240,235,225,0.85),rgba(246,244,240,1))]" />
       
       {/* Soft Ambient Depth Spheres */}
-      <div className="pointer-events-none fixed -top-40 -left-40 h-[600px] w-[600px] rounded-full bg-gradient-to-tr from-neutral-300/30 via-neutral-200/20 to-transparent blur-[140px]" />
-      <div className="pointer-events-none fixed top-1/4 -right-40 h-[700px] w-[700px] rounded-full bg-gradient-to-bl from-neutral-400/20 via-neutral-200/10 to-transparent blur-[150px]" />
-      <div className="pointer-events-none fixed -bottom-40 left-1/3 h-[600px] w-[600px] rounded-full bg-gradient-to-tr from-neutral-300/25 via-stone-200/15 to-transparent blur-[140px]" />
+      <div className="pointer-events-none fixed -top-40 -left-40 h-[650px] w-[650px] rounded-full bg-gradient-to-tr from-neutral-300/35 via-neutral-200/20 to-transparent blur-[140px]" />
+      <div className="pointer-events-none fixed top-1/4 -right-40 h-[750px] w-[750px] rounded-full bg-gradient-to-bl from-neutral-400/20 via-neutral-200/10 to-transparent blur-[150px]" />
+      <div className="pointer-events-none fixed -bottom-40 left-1/3 h-[650px] w-[650px] rounded-full bg-gradient-to-tr from-neutral-300/30 via-stone-200/15 to-transparent blur-[140px]" />
 
-      {/* Dynamic Grid Matrix Texture (Ultra Subtle) */}
+      {/* Subtle Texture Mesh */}
       <div
-        className="pointer-events-none fixed inset-0 z-0 opacity-[0.035]"
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.03]"
         style={{
           backgroundImage: "radial-gradient(rgba(0,0,0,0.8) 1px, transparent 1px)",
           backgroundSize: "28px 28px",
@@ -253,152 +223,82 @@ export default function FeedPage() {
       />
 
       {/* ------------------------------------------------------------------ */}
-      {/* Overlapping Irregular Blobs Spatial Stage                          */}
-      {/* Blobs bleed into screen exteriors and overlap one another          */}
+      {/* The 3 Solid Overlapping Blobs Spatial Canvas                        */}
       {/* ------------------------------------------------------------------ */}
       <div className="relative z-10 w-full h-screen min-h-[900px] overflow-hidden">
-        {/* BLOB 1: Top-Left Titan Blob (Bleeds off Top & Left) */}
-        <LivingOrganicBlob
+        {/* SOLID BLOB 1: Top-Left Titan Pod (White Frosted Glass) */}
+        {/* Dominates the upper-left quadrant and bleeds off top & left */}
+        <SolidOrganicBlob
           id="01"
           label="Titan Apex Pod"
-          width={720}
-          height={560}
+          width={860}
+          height={680}
           seed={3}
           lobes={9}
           irregularity={0.24}
           tone="white"
-          floatDuration={22 * speedMultiplier}
+          floatDuration={22}
           floatDelay={0}
-          className="-top-24 -left-36 z-10"
-          mouseSpringX={mouseSpringX}
-          mouseSpringY={mouseSpringY}
-          parallaxFactor={0.04}
-        />
-
-        {/* BLOB 2: Center Hero Obsidian Void (Deep Black Floating Island) */}
-        <LivingOrganicBlob
-          id="02"
-          label="Obsidian Nexus Island"
-          width={640}
-          height={480}
-          seed={8}
-          lobes={8}
-          irregularity={0.26}
-          tone="black"
-          floatDuration={18 * speedMultiplier}
-          floatDelay={2}
-          className="top-[22%] left-[32%] z-30"
-          mouseSpringX={mouseSpringX}
-          mouseSpringY={mouseSpringY}
-          parallaxFactor={-0.05}
-        />
-
-        {/* BLOB 3: Right-Exterior Drifting Opal Blob (Bleeds off Right) */}
-        <LivingOrganicBlob
-          id="03"
-          label="East Horizon Lobe"
-          width={680}
-          height={540}
-          seed={12}
-          lobes={9}
-          irregularity={0.21}
-          tone="white"
-          floatDuration={25 * speedMultiplier}
-          floatDelay={4}
-          className="top-[8%] -right-32 z-20"
+          className="-top-24 -left-28 z-10"
           mouseSpringX={mouseSpringX}
           mouseSpringY={mouseSpringY}
           parallaxFactor={0.035}
         />
 
-        {/* BLOB 4: Bottom-Left Smoke Organic Pebble (Bleeds off Bottom-Left) */}
-        <LivingOrganicBlob
-          id="04"
-          label="Smoke Anchor Pod"
-          width={580}
-          height={440}
-          seed={19}
-          lobes={7}
-          irregularity={0.25}
-          tone="smoke"
-          floatDuration={20 * speedMultiplier}
-          floatDelay={1}
-          className="bottom-[-10%] -left-20 z-20"
+        {/* SOLID BLOB 2: Center-Right Hero Obsidian Void (Deep Black) */}
+        {/* Dominates the center & right quadrant, overlapping Blob 1 */}
+        <SolidOrganicBlob
+          id="02"
+          label="Obsidian Nexus Void"
+          width={820}
+          height={640}
+          seed={9}
+          lobes={9}
+          irregularity={0.26}
+          tone="black"
+          floatDuration={19}
+          floatDelay={2}
+          className="top-[18%] right-[-5%] z-30"
           mouseSpringX={mouseSpringX}
           mouseSpringY={mouseSpringY}
-          parallaxFactor={-0.03}
+          parallaxFactor={-0.045}
         />
 
-        {/* BLOB 5: Bottom-Right Graphite Basin (Bleeds off Bottom-Right) */}
-        <LivingOrganicBlob
-          id="05"
-          label="Graphite Basin"
-          width={660}
-          height={500}
-          seed={27}
+        {/* SOLID BLOB 3: Bottom Anchor Pod (Smoked Graphite) */}
+        {/* Spans across the lower viewport, interlocking Blobs 1 & 2 */}
+        <SolidOrganicBlob
+          id="03"
+          label="Graphite Anchor Basin"
+          width={880}
+          height={600}
+          seed={17}
           lobes={8}
           irregularity={0.23}
           tone="graphite"
-          floatDuration={24 * speedMultiplier}
-          floatDelay={3}
-          className="-bottom-20 right-[5%] z-20"
+          floatDuration={24}
+          floatDelay={3.5}
+          className="bottom-[-12%] left-[12%] z-20"
           mouseSpringX={mouseSpringX}
           mouseSpringY={mouseSpringY}
-          parallaxFactor={0.045}
-        />
-
-        {/* BLOB 6: Central Translucent Glass Bridge Droplet */}
-        <LivingOrganicBlob
-          id="06"
-          label="Glass Bridge Capsule"
-          width={420}
-          height={320}
-          seed={34}
-          lobes={7}
-          irregularity={0.28}
-          tone="glass"
-          floatDuration={16 * speedMultiplier}
-          floatDelay={5}
-          className="top-[55%] left-[20%] z-40"
-          mouseSpringX={mouseSpringX}
-          mouseSpringY={mouseSpringY}
-          parallaxFactor={0.06}
-        />
-
-        {/* BLOB 7: Micro Satellite Droplet (Top-Center Drift) */}
-        <LivingOrganicBlob
-          id="07"
-          label="Satellite Droplet"
-          width={280}
-          height={220}
-          seed={42}
-          lobes={6}
-          irregularity={0.25}
-          tone="white"
-          floatDuration={14 * speedMultiplier}
-          floatDelay={2.5}
-          className="top-[6%] left-[45%] z-15"
-          mouseSpringX={mouseSpringX}
-          mouseSpringY={mouseSpringY}
-          parallaxFactor={-0.04}
+          parallaxFactor={0.04}
         />
       </div>
 
       {/* ------------------------------------------------------------------ */}
       {/* Top Floating Control Capsule: Canvas Stage HUD                      */}
       {/* ------------------------------------------------------------------ */}
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full border border-white/80 bg-white/85 px-6 py-2.5 shadow-[0_16px_40px_rgba(60,50,35,0.12)] backdrop-blur-2xl">
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full border border-white/80 bg-white/90 px-6 py-2.5 shadow-[0_16px_40px_rgba(60,50,35,0.12)] backdrop-blur-2xl">
         <div className="flex items-center gap-2 pr-3 border-r border-neutral-200">
           <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-ping" />
           <span className="text-xs font-black uppercase tracking-wider text-neutral-900">
-            Organic Blob Canvas
+            3 Solid Organic Blobs Canvas
           </span>
         </div>
 
         <div className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-600">
-          <span>7 Liquid Pods Active</span>
+          <span>Screen-Spanning Layout</span>
           <span className="text-neutral-300">•</span>
-          <span className="text-neutral-400">Move mouse to feel parallax physics</span>
+          <span className="text-neutral-400">Pure Fluid Motion</span>
         </div>
       </div>
     </div>
