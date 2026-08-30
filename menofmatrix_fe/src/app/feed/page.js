@@ -41,25 +41,24 @@ export default function FeedPage() {
   return (
     <div className="relative h-screen w-screen overflow-hidden select-none bg-[#f4f2ee]">
       {/* ------------------------------------------------------------------ */}
-      {/* Region 1: Left / Top-Left (Crisp White Glass)                       */}
+      {/* Region 1: Left / Top-Left — BOTTOM LAYER (z-10, Black)             */}
+      {/* Lowest in z-stack: no shadow cast (nothing is below it)            */}
       {/* ------------------------------------------------------------------ */}
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none z-10"
-        style={{
-          filter: "drop-shadow(0 20px 50px rgba(0,0,0,0.45)) drop-shadow(0 4px 16px rgba(0,0,0,0.3))",
-        }}
         viewBox={`0 0 ${w} ${h}`}
       >
         <path d={pathLeftWhite} fill="#0d0d0f" />
       </svg>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Region 2: Top-Right (Warm Smoke / Light Grey Glass)                 */}
+      {/* Region 2: Top-Right — MIDDLE LAYER (z-20, Smoke)                   */}
+      {/* Sits above Region 1: casts a very soft shadow onto the black below  */}
       {/* ------------------------------------------------------------------ */}
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none z-20"
         style={{
-          filter: "drop-shadow(0 20px 50px rgba(60,50,35,0.1))",
+          filter: "drop-shadow(0 6px 18px rgba(0,0,0,0.14))",
         }}
         viewBox={`0 0 ${w} ${h}`}
       >
@@ -67,12 +66,13 @@ export default function FeedPage() {
       </svg>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Region 3: Bottom-Right (Obsidian Black) - Overlaps with Soft Shadow */}
+      {/* Region 3: Bottom-Right — TOP LAYER (z-30, White)                   */}
+      {/* Sits above both: casts a slightly stronger but still soft shadow    */}
       {/* ------------------------------------------------------------------ */}
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none z-30"
         style={{
-          filter: "drop-shadow(0 -20px 60px rgba(60,50,35,0.12)) drop-shadow(-15px 0 35px rgba(0,0,0,0.06))",
+          filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.18))",
         }}
         viewBox={`0 0 ${w} ${h}`}
       >
@@ -80,15 +80,15 @@ export default function FeedPage() {
       </svg>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Specular Organic Border Highlights along the Partition Lines        */}
+      {/* Partition Line Highlights: subtle specular strokes on boundaries    */}
       {/* ------------------------------------------------------------------ */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none z-40" viewBox={`0 0 ${w} ${h}`}>
-        {/* Top dividing line highlight */}
-        <path d={curveTop} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="1.8" />
-        {/* Left dividing line highlight */}
-        <path d={curveLeft} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-        {/* Right dividing line highlight */}
-        <path d={curveRight} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
+        {/* Top boundary: white blob meets black — subtle white specular rim */}
+        <path d={curveTop} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="1.2" />
+        {/* Left boundary: white meets black going down */}
+        <path d={curveLeft} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.2" />
+        {/* Right boundary: smoke meets white — very subtle light seam */}
+        <path d={curveRight} fill="none" stroke="rgba(200,196,190,0.5)" strokeWidth="1.2" />
       </svg>
     </div>
   );
