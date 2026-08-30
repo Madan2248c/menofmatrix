@@ -1385,7 +1385,7 @@ function ConvexYoutubeBackground({ layout, isHovered }) {
   const tBottom = tTop + th;
   const tLeft = tbBox.left - pill.left;
 
-  // Organic C1 continuous bridge calculations (identical symmetry to Instagram bridge)
+  // Organic C1 continuous bridge calculations (exact mirror symmetry to Instagram bridge)
   const x1 = pw - 6;
   const xMid = (pw + tLeft) / 2;
   const dip = 12;
@@ -1396,7 +1396,7 @@ function ConvexYoutubeBackground({ layout, isHovered }) {
   const yMidTop = pTop + dip;
   const yMidBot = pBottom - dip;
 
-  const pathD = `M ${rp} ${pTop} L ${x1} ${pTop} C ${x1 + 8} ${pTop}, ${xMid - w1} ${yMidTop}, ${xMid} ${yMidTop} C ${xMid + w2} ${yMidTop}, ${tLeft + rt - 8} ${tTop}, ${tLeft + rt} ${tTop} L ${tLeft + tw - rt} ${tTop} A ${rt} ${rt} 0 0 1 ${tLeft + tw} ${tTop + rt} L ${tLeft + tw} ${tBottom - rt} A ${rt} ${rt} 0 0 1 ${tLeft + tw - rt} ${tBottom} L ${tLeft + rt} ${tBottom} A ${rt} ${rt} 0 0 1 ${tLeft} ${tBottom - rt} L ${tLeft} ${pBottom + ri} C ${tLeft} ${pBottom + ri - 8}, ${xMid + w2} ${yMidBot}, ${xMid} ${yMidBot} C ${xMid - w1} ${yMidBot}, ${x1 + 8} ${pBottom}, ${x1} ${pBottom} L ${rp} ${pBottom} A ${rp} ${rp} 0 0 1 ${rp} ${pTop} Z`;
+  const pathD = `M ${rp} ${pTop} L ${x1} ${pTop} C ${x1 + 8} ${pTop}, ${xMid - w1} ${yMidTop}, ${xMid} ${yMidTop} C ${xMid + w2} ${yMidTop}, ${tLeft} ${pTop - ri + 8}, ${tLeft} ${pTop - ri} L ${tLeft} ${tTop + rt} A ${rt} ${rt} 0 0 1 ${tLeft + rt} ${tTop} L ${tLeft + tw - rt} ${tTop} A ${rt} ${rt} 0 0 1 ${tLeft + tw} ${tTop + rt} L ${tLeft + tw} ${tBottom - rt} A ${rt} ${rt} 0 0 1 ${tLeft + tw - rt} ${tBottom} L ${tLeft + rt} ${tBottom} A ${rt} ${rt} 0 0 1 ${tLeft} ${tBottom - rt} L ${tLeft} ${pBottom + ri} C ${tLeft} ${pBottom + ri - 8}, ${xMid + w2} ${yMidBot}, ${xMid} ${yMidBot} C ${xMid - w1} ${yMidBot}, ${x1 + 8} ${pBottom}, ${x1} ${pBottom} L ${rp} ${pBottom} A ${rp} ${rp} 0 0 1 ${rp} ${pTop} Z`;
 
   return (
     <div
