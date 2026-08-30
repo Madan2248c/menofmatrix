@@ -800,13 +800,10 @@ function VideoCarousel({ videos, boxHeight }) {
   );
 }
 
-// A second standalone box, same left/width as TweetsBox, stacked directly
-// above it — spanning from the real viewport top edge down to just above
-// where TweetsBox starts. Left half: the most recent video and the
-// highest-viewed video, featured. Right half: everything else, as a
-// center-snapping vertical carousel.
 function TopBox({
   youtubeRef,
+  instagramRef,
+  twitterRef,
   videos,
   isLoading: propIsLoading,
   transparent = false,
@@ -820,27 +817,30 @@ function TopBox({
     function measure() {
       const dockRect = getDockRect();
       const youtubeRect = youtubeRef.current?.getBoundingClientRect();
+      const instagramRect = instagramRef?.current?.getBoundingClientRect();
+      const twitterRect = twitterRef?.current?.getBoundingClientRect();
       if (!dockRect || !youtubeRect) return;
 
       const left = dockRect.right + BOX_GAP;
       const rawWidth = window.innerWidth - left - BOX_MARGIN;
       const width = Math.max(120, rawWidth);
       const top = BOX_MARGIN;
-      const height = Math.max(youtubeRect.bottom - top, 0);
+      // Span down to bottom of the 2nd (middle) pill or right before the Twitter card
+      const targetBottom = instagramRect?.bottom || (twitterRect ? twitterRect.top - BOX_GAP : top + 340);
+      const height = Math.max(targetBottom - top, 280);
       setBox({ left, top, width, height });
     }
 
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [youtubeRef]);
+  }, [youtubeRef, instagramRef, twitterRef]);
 
   if (!box) return null;
 
   const isLoading = propIsLoading !== undefined ? propIsLoading : videos.length === 0;
 
   if (isLoading) {
-    const gapLeft = box.gapLeft || 0;
     return (
       <div
         ref={containerRef}
@@ -865,35 +865,20 @@ function TopBox({
               <SiYoutube className="h-3.5 w-3.5 text-neutral-300" />
               More on YouTube
             </span>
-            <span className="text-neutral-300">Broadcasts</span>
+            <span className="text-[9px] text-neutral-300">Broadcasts</span>
           </div>
-
           <div className="flex min-h-0 flex-1 gap-4">
-            {/* Left column - featured shimmers */}
-            <div className="flex min-h-0 w-[45%] flex-col gap-3">
-              <div className="flex flex-1 flex-col gap-2">
-                <div className="aspect-[16/10] w-full rounded-2xl bg-neutral-200/50 animate-pulse" />
-                <div className="h-3 w-3/4 rounded-full bg-neutral-200/40 animate-pulse" />
-                <div className="h-2 w-1/4 rounded-full bg-neutral-200/30 animate-pulse" />
-              </div>
-              <div className="flex flex-1 flex-col gap-2">
-                <div className="aspect-[16/10] w-full rounded-2xl bg-neutral-200/50 animate-pulse" />
-                <div className="h-3 w-3/4 rounded-full bg-neutral-200/40 animate-pulse" />
-                <div className="h-2 w-1/4 rounded-full bg-neutral-200/30 animate-pulse" />
-              </div>
+            <div className="flex min-h-0 w-[45%] flex-col gap-2">
+              <div className="aspect-video w-full rounded-2xl bg-neutral-200/60 animate-pulse" />
+              <div className="aspect-video w-full rounded-2xl bg-neutral-200/40 animate-pulse" />
             </div>
-
-            {/* Vertical separator */}
-            <div className="h-full border-l border-neutral-100/50" />
-
-            {/* Right column - carousel shimmers */}
-            <div className="flex flex-1 flex-col gap-3 justify-center py-2">
+            <div className="flex min-h-0 flex-1 flex-col gap-2 border-l border-neutral-100/80 pl-3">
               {[1, 2, 3].map((n) => (
-                <div key={n} className="flex items-center gap-3">
-                  <div className="h-12 w-20 shrink-0 rounded-lg bg-neutral-200/50 animate-pulse" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-2.5 w-5/6 rounded-full bg-neutral-200/40 animate-pulse" />
-                    <div className="h-2 w-1/3 rounded-full bg-neutral-200/30 animate-pulse" />
+                <div key={n} className="flex items-center gap-2">
+                  <div className="h-10 w-16 shrink-0 rounded-lg bg-neutral-200/50 animate-pulse" />
+                  <div className="flex-1 space-y-1">
+                    <div className="h-2.5 w-full rounded-full bg-neutral-200/40 animate-pulse" />
+                    <div className="h-2 w-1/2 rounded-full bg-neutral-200/30 animate-pulse" />
                   </div>
                 </div>
               ))}
@@ -904,20 +889,15 @@ function TopBox({
     );
   }
 
-  const recent = videos[0];
-  const byViews = [...videos].sort((a, b) => (Number(b.view_count) || 0) - (Number(a.view_count) || 0));
-  let topViewed = byViews[0];
-  if (topViewed && recent && topViewed.id === recent.id) topViewed = videos[1] || byViews[1];
-  const featuredIds = new Set([recent?.id, topViewed?.id].filter(Boolean));
-  const remaining = videos.filter((v) => !featuredIds.has(v.id));
+  const [recent, topViewed, ...remaining] = videos;
 
   return (
     <div
       ref={containerRef}
       className={
         transparent
-          ? "fixed overflow-hidden transition-all duration-300 bg-transparent border-none shadow-none backdrop-blur-none"
-          : "fixed overflow-hidden rounded-3xl border border-white/80 bg-white/90 shadow-[0_16px_40px_rgba(60,50,35,0.08),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-xl transition-all duration-300"
+          ? `${poppins.className} fixed overflow-hidden transition-all duration-300 bg-transparent border-none shadow-none backdrop-blur-none`
+          : `${poppins.className} fixed overflow-hidden rounded-3xl border border-white/80 bg-white/90 shadow-[0_16px_40px_rgba(60,50,35,0.08),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-xl transition-all duration-300 hover:shadow-[0_20px_48px_rgba(60,50,35,0.12)]`
       }
       style={{
         left: box.left,
@@ -1306,16 +1286,20 @@ function MobileBentoFeed({ data, stories, posts, followers, isLoading, onOpenTwe
   );
 }
 
+// ---------------------------------------------------------------------------
+// SVG Canvas Backgrounds: Unified Convex Glass Hull with Organic C1 Bridges
+// ---------------------------------------------------------------------------
+
 function ConvexInstagramBackground({ layout, isHovered }) {
   if (!layout) return null;
 
-  const { panel, pill } = layout;
+  const { pill, panel } = layout;
 
   // Local coordinates mapping
-  const lw = panel.width;
-  const lh = panel.height;
   const pw = pill.width;
   const ph = pill.height;
+  const lw = panel.width;
+  const lh = panel.height;
   const gapLeft = pill.left - panel.left;
   const pt = pill.top - panel.top;
 
@@ -1403,17 +1387,13 @@ function ConvexYoutubeBackground({ layout, isHovered }) {
 
   // Organic C1 continuous bridge calculations
   const x1 = pw - 6;
-  const x2 = tLeft + rt;
   const xMid = (pw + tLeft) / 2;
-  const dip = 12;
-
-  const w1 = (xMid - x1) * 0.5;
-  const w2 = (x2 - xMid) * 0.5;
+  const dip = 10;
 
   const yMidTop = pTop + dip;
   const yMidBot = pBottom - dip;
 
-  const pathD = `M ${tLeft + rt} ${tTop} L ${tLeft + tw - rt} ${tTop} A ${rt} ${rt} 0 0 1 ${tLeft + tw} ${tTop + rt} L ${tLeft + tw} ${tBottom - rt} A ${rt} ${rt} 0 0 1 ${tLeft + tw - rt} ${tBottom} L ${x2} ${tBottom} C ${x2 - 8} ${tBottom}, ${xMid + w2} ${yMidBot}, ${xMid} ${yMidBot} C ${xMid - w1} ${yMidBot}, ${x1 + 8} ${pBottom}, ${x1} ${pBottom} L ${rp} ${pBottom} A ${rp} ${rp} 0 0 1 ${rp} ${pTop} L ${x1} ${pTop} C ${x1 + 8} ${pTop}, ${xMid - w1} ${yMidTop}, ${xMid} ${yMidTop} C ${xMid + w2} ${yMidTop}, ${tLeft} ${pTop - ri + 8}, ${tLeft} ${pTop - ri} L ${tLeft} ${tTop + rt} A ${rt} ${rt} 0 0 1 ${tLeft + rt} ${tTop} Z`;
+  const pathD = `M ${rp} ${pTop} L ${x1} ${pTop} C ${x1 + (xMid - x1) * 0.5} ${pTop}, ${xMid - (xMid - x1) * 0.5} ${yMidTop}, ${xMid} ${yMidTop} C ${xMid + (tLeft - xMid) * 0.5} ${yMidTop}, ${tLeft + rt - 8} ${tTop}, ${tLeft + rt} ${tTop} L ${tLeft + tw - rt} ${tTop} A ${rt} ${rt} 0 0 1 ${tLeft + tw} ${tTop + rt} L ${tLeft + tw} ${tBottom - rt} A ${rt} ${rt} 0 0 1 ${tLeft + tw - rt} ${tBottom} L ${tLeft + rt} ${tBottom} C ${tLeft + rt - 8} ${tBottom}, ${xMid + (tLeft - xMid) * 0.5} ${yMidBot}, ${xMid} ${yMidBot} C ${xMid - (xMid - x1) * 0.5} ${yMidBot}, ${x1 + 6} ${pBottom}, ${x1} ${pBottom} L ${rp} ${pBottom} A ${rp} ${rp} 0 0 1 ${rp} ${pTop} Z`;
 
   return (
     <div
@@ -1725,6 +1705,8 @@ export default function Social() {
         />
         <TopBox
           youtubeRef={youtubeRef}
+          instagramRef={instagramRef}
+          twitterRef={twitterRef}
           videos={videos}
           isLoading={!isLoaded}
           transparent={true}
