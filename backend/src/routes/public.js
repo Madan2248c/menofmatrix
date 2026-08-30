@@ -100,6 +100,8 @@ router.get('/followers', async (_req, res) => {
         `SELECT a.id AS account_id, a.username AS name, a.profile_picture_url AS avatar_url,
                 (SELECT followers_count FROM account_snapshots s
                   WHERE s.account_id = a.id ORDER BY snapshot_date DESC LIMIT 1) AS followers_count,
+                (SELECT media_count FROM account_snapshots s
+                  WHERE s.account_id = a.id ORDER BY snapshot_date DESC LIMIT 1) AS posts_count,
                 (SELECT followers_count FROM account_snapshots s
                   WHERE s.account_id = a.id ORDER BY snapshot_date DESC OFFSET 1 LIMIT 1) AS prev_followers_count,
                 (SELECT MAX(snapshot_date) FROM account_snapshots s WHERE s.account_id = a.id) AS last_snapshot_date,
@@ -142,6 +144,7 @@ router.get('/followers', async (_req, res) => {
         name: a.name,
         avatar_url: a.avatar_url || null,
         followers_count: a.followers_count == null ? null : Number(a.followers_count),
+        posts_count: a.posts_count == null ? null : Number(a.posts_count),
         prev_followers_count: a.prev_followers_count == null ? null : Number(a.prev_followers_count),
         delta:
           a.followers_count != null && a.prev_followers_count != null

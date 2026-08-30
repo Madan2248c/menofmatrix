@@ -1700,6 +1700,8 @@ export default function Social() {
           stories={stories}
           posts={posts}
           followers={followers}
+          followersCount={data?.instagram?.followersCount}
+          postsCount={data?.instagram?.postsCount}
           isLoading={!isLoaded}
           transparent={true}
           onMouseEnter={() => setIsInstagramHovered(true)}

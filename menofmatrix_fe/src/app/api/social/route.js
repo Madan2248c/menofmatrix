@@ -21,6 +21,7 @@ export async function GET() {
       username: account?.name || null,
       avatarUrl: account?.avatar_url || stats?.avatar_url || null,
       followersCount: stats?.followers_count ?? null,
+      postsCount: stats?.posts_count ?? null,
       channelId: account?.external_id || null,
     };
   };

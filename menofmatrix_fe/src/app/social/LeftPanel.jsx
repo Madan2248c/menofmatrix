@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Poppins } from "next/font/google";
 import { SiInstagram } from "react-icons/si";
-import { HiXMark, HiChevronLeft, HiChevronRight, HiOutlinePlay } from "react-icons/hi2";
+import { HiXMark, HiChevronLeft, HiChevronRight, HiOutlinePlay, HiPhoto, HiUsers } from "react-icons/hi2";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600"] });
 
@@ -500,7 +500,7 @@ export function MiniPostsGrid({ posts = [], gridRef }) {
 // Which follower fills each slot rotates on a timer instead (see
 // ROTATE_INTERVAL_MS below), so a large follower list still gets fully
 // cycled through over time.
-const SLOT_COUNT = 36;
+const SLOT_COUNT = 46;
 const ROTATE_INTERVAL_MS = 5000;
 const FADE_MS = 800; // one-way fade duration — swap is fade-out then fade-in
 
@@ -889,6 +889,154 @@ function FollowerBubbles({ followers, containerRef, obstacleRefs, box }) {
 }
 
 // ---------------------------------------------------------------------------
+// Background depth layer: a crowd of small, blurred, slow-drifting avatars
+// BEHIND the main physics bubbles. Smallness + blur reads as "more people
+// further back", so the field feels fully populated by the real (much larger)
+// follower count without crowding the sharp foreground bubbles.
+// ---------------------------------------------------------------------------
+const DEPTH_AVATAR_COUNT = 52;
+
+// One background avatar. Its position/size/blur are fixed, but the FACE cycles
+// through the follower list on its own timer (staggered per avatar, and offset
+// from the main bubbles' 5s rotation so the crowd feels continuously alive
+// rather than marching in lockstep). Crossfades via the shared FadeAvatar.
+function DepthAvatar({ followers, seed, intervalMs }) {
+  const count = followers.length;
+  const [idx, setIdx] = useState(() => seed % Math.max(1, count));
+
+  useEffect(() => {
+    if (count === 0) return;
+    setIdx(seed % count);
+    const t = setInterval(() => {
+      setIdx((i) => (i + 1 + (seed % 3)) % count);
+    }, intervalMs);
+    return () => clearInterval(t);
+  }, [count, seed, intervalMs]);
+
+  const f = count > 0 ? followers[idx % count] : null;
+  return <FadeAvatar url={f?.profile_pic_url} />;
+}
+
+function DepthLayer({ followers }) {
+  // Stable pseudo-random layout (position/size/speed derived from the index)
+  // so the layer never re-shuffles between renders — only the faces rotate.
+  const bits = useMemo(() => {
+    if (!followers?.length) return [];
+    return Array.from({ length: DEPTH_AVATAR_COUNT }, (_, i) => {
+      const left = 3 + ((i * 29) % 94); // %
+      let top = 3 + ((i * 17) % 92); // %
+      // Keep the central band clear for the follower-count pill — avatars
+      // that land inside it are pushed above/below instead of removed, so
+      // the crowd density stays the same.
+      if (top > 40 && top < 60 && left > 22 && left < 78) {
+        top = top < 50 ? 36 - ((i * 7) % 12) : 64 + ((i * 7) % 12);
+      }
+      return {
+        seed: i * 7 + 3,
+        size: 10 + ((i * 13) % 9), // 10–18px
+        left, // %
+        top, // %
+        dur: 14 + ((i * 11) % 14), // drift period in s
+        delay: -((i * 7) % 20), // negative so motion is already underway
+        opacity: 0.3 + (((i * 5) % 25) / 100), // 0.30–0.54
+        blur: 1 + (i % 3) * 0.6, // 1–2.2px
+        rotateMs: 8000 + ((i * 13) % 7) * 1000, // face-swap period: 8–14s
+      };
+    });
+  }, [followers]);
+
+  if (bits.length === 0) return null;
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 select-none">
+      <style>{`@keyframes mofm-depth-drift { 0%,100% { transform: translate(0,0) } 25% { transform: translate(6px,-8px) } 50% { transform: translate(-5px,5px) } 75% { transform: translate(8px,6px) } }`}</style>
+      {bits.map((b, i) => (
+        <div
+          key={i}
+          className="absolute overflow-hidden rounded-full"
+          style={{
+            left: `${b.left}%`,
+            top: `${b.top}%`,
+            width: b.size,
+            height: b.size,
+            opacity: b.opacity,
+            filter: `blur(${b.blur}px)`,
+            animation: `mofm-depth-drift ${b.dur}s ease-in-out ${b.delay}s infinite`,
+          }}
+        >
+          <DepthAvatar followers={followers} seed={b.seed} intervalMs={b.rotateMs} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Center stat pill: the bubbles are a live sample of the community — this
+// states the real magnitude (followers ticking up from ~90% on load, plus
+// the total post count) so the numbers feel alive rather than pasted on.
+// ---------------------------------------------------------------------------
+function TickingCount({ value }) {
+  const [display, setDisplay] = useState(value == null ? 0 : Math.floor(value * 0.9));
+
+  useEffect(() => {
+    if (value == null) return;
+    const from = Math.floor(value * 0.9);
+    const dur = 1400;
+    let raf;
+    let start;
+    setDisplay(from);
+    function step(now) {
+      if (start == null) start = now;
+      const t = Math.min((now - start) / dur, 1);
+      const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      setDisplay(Math.round(from + (value - from) * eased));
+      if (t < 1) raf = requestAnimationFrame(step);
+    }
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+
+  return <span>{display.toLocaleString("en-US")}</span>;
+}
+
+function StatsPill({ followers, posts, pillRef }) {
+  if (followers == null && posts == null) return null;
+  return (
+    // Sits above the avatar bubbles (z-0 idle / z-40 hovered) so the pill
+    // floats on top while the bubbles drift freely underneath. It is NOT a
+    // physics obstacle — bubbles pass straight through its space.
+    <div
+      ref={pillRef}
+      className="pointer-events-none absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2"
+    >
+      <div className="flex items-center gap-2 rounded-full border border-white/85 bg-white/55 py-1.5 pl-2.5 pr-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.04)] ring-1 ring-black/5 backdrop-blur-sm">
+        {followers != null && (
+          <>
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-tr from-fuchsia-500 via-rose-500 to-amber-400 text-white">
+              <HiUsers className="h-3 w-3" />
+            </span>
+            <span className="whitespace-nowrap text-[11px] leading-none text-neutral-600">
+              <span className="font-semibold tabular-nums text-neutral-900">
+                <TickingCount value={followers} />
+              </span>{" "}
+              followers &amp; counting
+            </span>
+          </>
+        )}
+        {followers != null && posts != null && <span className="h-3 w-px bg-neutral-300" />}
+        {posts != null && (
+          <span className="flex items-center gap-1.5 whitespace-nowrap text-[11px] leading-none text-neutral-600">
+            <HiPhoto className="h-3 w-3 text-fuchsia-500" />
+            <span className="font-semibold tabular-nums text-neutral-900">{posts.toLocaleString("en-US")}</span>{" "}
+            posts
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Top-level panel: measures the box against the floating dock (same layout
 // contract as TweetsBox/TopBox on the right), fetches its own data, and
 // composes the three layers.
@@ -897,6 +1045,8 @@ export default function LeftPanel({
   stories: propStories,
   posts: propPosts,
   followers: propFollowers,
+  followersCount: propFollowersCount,
+  postsCount: propPostsCount,
   isLoading: propIsLoading,
   transparent = false,
   onMouseEnter,
@@ -916,6 +1066,7 @@ export default function LeftPanel({
   const resolvedRef = containerRef || localRef;
   const storyRef = useRef(null);
   const bottomGridRef = useRef(null);
+  const countPillRef = useRef(null);
 
   useEffect(() => {
     function measure() {
@@ -1042,6 +1193,8 @@ export default function LeftPanel({
         {!transparent && (
           <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] rounded-t-3xl bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
         )}
+        {/* Crowd depth behind the sharp bubbles, then the bubbles themselves */}
+        <DepthLayer followers={followers} />
         <FollowerBubbles
           followers={followers}
           containerRef={resolvedRef}
@@ -1063,6 +1216,11 @@ export default function LeftPanel({
               window.open(post.permalink, "_blank", "noopener,noreferrer");
             }
           }}
+        />
+        <StatsPill
+          followers={propFollowersCount}
+          posts={propPostsCount}
+          pillRef={countPillRef}
         />
       </div>
 
