@@ -510,12 +510,7 @@ function TweetsBox({
         {!transparent && (
           <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
         )}
-        <div
-          className="flex h-full flex-col py-4 pr-5"
-          style={{
-            paddingLeft: transparent ? `${gapLeft + 20}px` : "1.25rem",
-          }}
-        >
+        <div className="flex h-full flex-col p-5">
           <div className="mb-1 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-neutral-300">
             <span className="flex items-center gap-1.5 text-neutral-300">
               <SiX className="h-3 w-3 text-neutral-300" />
@@ -560,12 +555,7 @@ function TweetsBox({
       {!transparent && (
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
       )}
-      <div
-        className="flex h-full flex-col py-4 pr-5"
-        style={{
-          paddingLeft: transparent ? `${box.gapLeft + 20}px` : "1.25rem",
-        }}
-      >
+      <div className="flex h-full flex-col p-5">
         <div className="mb-1 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
           <span className="flex items-center gap-1.5 text-neutral-700">
             <SiX className="h-3 w-3 text-neutral-900" />
@@ -865,12 +855,7 @@ function TopBox({
         {!transparent && (
           <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
         )}
-        <div
-          className="flex h-full flex-col py-4 pr-5"
-          style={{
-            paddingLeft: transparent ? `${gapLeft + 20}px` : "1.25rem",
-          }}
-        >
+        <div className="flex h-full flex-col p-5">
           <div className="mb-2 flex shrink-0 items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-neutral-300">
             <span className="flex items-center gap-1.5 text-neutral-300">
               <SiYoutube className="h-3.5 w-3.5 text-neutral-300" />
@@ -942,12 +927,7 @@ function TopBox({
       {!transparent && (
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
       )}
-      <div
-        className="flex h-full flex-col py-4 pr-5"
-        style={{
-          paddingLeft: transparent ? `${box.gapLeft + 20}px` : "1.25rem",
-        }}
-      >
+      <div className="flex h-full flex-col p-5">
         <div className="mb-2 flex shrink-0 items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
           <span className="flex items-center gap-1.5 text-neutral-700">
             <SiYoutube className="h-3.5 w-3.5 text-red-600" />
@@ -1323,7 +1303,7 @@ function ConvexYoutubeBackground({ layout, isHovered }) {
 
   return (
     <div
-      className="fixed pointer-events-none z-0 transition-all duration-300 ease-out"
+      className="fixed pointer-events-none z-0"
       style={{
         left: pill.left,
         top: tbBox.top,
@@ -1332,11 +1312,15 @@ function ConvexYoutubeBackground({ layout, isHovered }) {
         filter: isHovered
           ? "drop-shadow(0 20px 48px rgba(255,0,0,0.16)) drop-shadow(0 1px 3px rgba(0,0,0,0.04))"
           : "drop-shadow(0 16px 40px rgba(60,50,35,0.08)) drop-shadow(0 1px 3px rgba(0,0,0,0.03))",
+        transition: `filter 500ms ${SOFT_EASE}`,
       }}
     >
       <div
-        className="absolute inset-0 bg-white/90 backdrop-blur-xl transition-colors duration-300"
-        style={{ clipPath: `path('${pathD}')` }}
+        className="absolute inset-0 bg-white/90 backdrop-blur-xl"
+        style={{
+          clipPath: `path('${pathD}')`,
+          transition: `background-color 500ms ${SOFT_EASE}`,
+        }}
       />
       <div
         className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-85"
@@ -1348,7 +1332,7 @@ function ConvexYoutubeBackground({ layout, isHovered }) {
           fill="none"
           stroke={isHovered ? "rgba(255, 0, 0, 0.25)" : "rgba(255, 255, 255, 0.85)"}
           strokeWidth="1.2"
-          className="transition-all duration-300"
+          style={{ transition: `stroke 500ms ${SOFT_EASE}` }}
         />
       </svg>
     </div>
@@ -1376,7 +1360,7 @@ function ConvexTwitterBackground({ layout, isHovered }) {
 
   return (
     <div
-      className="fixed pointer-events-none z-0 transition-all duration-300 ease-out"
+      className="fixed pointer-events-none z-0"
       style={{
         left: pill.left,
         top: pill.top,
@@ -1385,13 +1369,15 @@ function ConvexTwitterBackground({ layout, isHovered }) {
         filter: isHovered
           ? "drop-shadow(0 20px 48px rgba(0,0,0,0.14)) drop-shadow(0 1px 3px rgba(0,0,0,0.04))"
           : "drop-shadow(0 16px 40px rgba(60,50,35,0.08)) drop-shadow(0 1px 3px rgba(0,0,0,0.03))",
+        transition: `filter 500ms ${SOFT_EASE}`,
       }}
     >
       {/* Frosted glass backdrop */}
       <div
-        className="absolute inset-0 bg-white/90 backdrop-blur-xl transition-colors duration-300"
+        className="absolute inset-0 bg-white/90 backdrop-blur-xl"
         style={{
           clipPath: `path('${pathD}')`,
+          transition: `background-color 500ms ${SOFT_EASE}`,
         }}
       />
 
@@ -1411,7 +1397,7 @@ function ConvexTwitterBackground({ layout, isHovered }) {
           fill="none"
           stroke={isHovered ? "rgba(30, 30, 30, 0.25)" : "rgba(255, 255, 255, 0.85)"}
           strokeWidth="1.2"
-          className="transition-all duration-300"
+          style={{ transition: `stroke 500ms ${SOFT_EASE}` }}
         />
       </svg>
     </div>
