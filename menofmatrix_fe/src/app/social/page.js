@@ -996,14 +996,14 @@ function MobileBentoFeed({ data, stories, posts, followers, isLoading, onOpenTwe
       <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-center gap-3">
         {!isLoading && data ? (
           <>
-            <Pill platform="instagram" data={data.instagram} />
             <Pill platform="youtube" data={data.youtube} />
+            <Pill platform="instagram" data={data.instagram} />
             <Pill platform="twitter" data={data.twitter} />
           </>
         ) : (
           <>
-            <SkeletonPill nameWidth="w-32" />
             <SkeletonPill nameWidth="w-24" />
+            <SkeletonPill nameWidth="w-32" />
             <SkeletonPill nameWidth="w-28" />
           </>
         )}
@@ -1678,18 +1678,18 @@ export default function Social() {
           {isLoaded && data ? (
             <>
               <div
-                ref={instagramRef}
-                onMouseEnter={() => setIsInstagramHovered(true)}
-                onMouseLeave={() => setIsInstagramHovered(false)}
-              >
-                <Pill platform="instagram" data={data.instagram} transparent={true} />
-              </div>
-              <div
                 ref={youtubeRef}
                 onMouseEnter={() => setIsYoutubeHovered(true)}
                 onMouseLeave={() => setIsYoutubeHovered(false)}
               >
                 <Pill platform="youtube" data={data.youtube} transparent={true} />
+              </div>
+              <div
+                ref={instagramRef}
+                onMouseEnter={() => setIsInstagramHovered(true)}
+                onMouseLeave={() => setIsInstagramHovered(false)}
+              >
+                <Pill platform="instagram" data={data.instagram} transparent={true} />
               </div>
               <div
                 ref={twitterRef}
@@ -1701,11 +1701,11 @@ export default function Social() {
             </>
           ) : (
             <>
-              <div ref={instagramRef}>
-                <SkeletonPill nameWidth="w-32" transparent={true} />
-              </div>
               <div ref={youtubeRef}>
                 <SkeletonPill nameWidth="w-24" transparent={true} />
+              </div>
+              <div ref={instagramRef}>
+                <SkeletonPill nameWidth="w-32" transparent={true} />
               </div>
               <div ref={twitterRef}>
                 <SkeletonPill nameWidth="w-28" transparent={true} />
