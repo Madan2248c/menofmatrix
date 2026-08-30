@@ -963,16 +963,17 @@ function TopBox({
 }
 
 // ---------------------------------------------------------------------------
-// Mobile & Tablet Bento Grid Feed Component
+// Mobile & Tablet Bento Grid Feed Component (Responsive < xl)
 // ---------------------------------------------------------------------------
-function MobileBentoFeed({ data, stories, posts, followers, onOpenTweet }) {
+function MobileBentoFeed({ data, stories, posts, followers, isLoading, onOpenTweet }) {
+  const [activeStoryIdx, setActiveStoryIdx] = useState(null);
   const videos = data?.youtube?.videos || [];
   const tweets = data?.twitter?.tweets || [];
   const recentVideo = videos[0];
-  const otherVideos = videos.slice(1, 5);
+  const otherVideos = videos.slice(1, 4);
 
   return (
-    <div className="flex w-full max-w-xl flex-col gap-6 px-4 pt-6 pb-36">
+    <div className="flex w-full max-w-5xl flex-col gap-6 px-4 pt-6 pb-36">
       {/* Header section */}
       <div className="flex flex-col items-center text-center space-y-2">
         <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200/80 bg-white/90 px-3 py-1 shadow-xs backdrop-blur-xs">
@@ -994,7 +995,7 @@ function MobileBentoFeed({ data, stories, posts, followers, onOpenTweet }) {
 
       {/* Main Channel Badges */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-center gap-3">
-        {data ? (
+        {!isLoading && data ? (
           <>
             <Pill platform="instagram" data={data.instagram} />
             <Pill platform="youtube" data={data.youtube} />
@@ -1009,9 +1010,9 @@ function MobileBentoFeed({ data, stories, posts, followers, onOpenTweet }) {
         )}
       </div>
 
-      {/* Bento Grid */}
-      <div className="grid grid-cols-1 gap-5">
-        {/* Card 1: Instagram Studio */}
+      {/* Adaptive Bento Grid: 1 col on Mobile, 2 cols on Tablet */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+        {/* Card 1: Instagram Studio (Left col on Tablet) */}
         <div className="relative overflow-hidden rounded-3xl border border-white/80 bg-white/90 p-5 shadow-[0_14px_36px_rgba(60,50,35,0.06),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-xl transition-all duration-300 hover:shadow-[0_18px_42px_rgba(60,50,35,0.1)]">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
           <div className="mb-4 flex items-center justify-between">
@@ -1020,7 +1021,7 @@ function MobileBentoFeed({ data, stories, posts, followers, onOpenTweet }) {
                 <SiInstagram className="h-4 w-4" />
               </div>
               <div>
-                <h2 className={`${poppins.className} text-xs font-semibold text-neutral-900`}>Instagram Feed</h2>
+                <h2 className={`${poppins.className} text-xs font-semibold text-neutral-900`}>Instagram Studio</h2>
                 <p className="text-[10px] text-neutral-400">
                   {data?.instagram?.username ? `@${data.instagram.username}` : "Stories & Posts"}
                 </p>
@@ -1039,42 +1040,52 @@ function MobileBentoFeed({ data, stories, posts, followers, onOpenTweet }) {
             )}
           </div>
 
-          <div className="space-y-4">
-            {/* Story Showcase or Highlights */}
-            {stories.data.length > 0 && (
-              <div className="relative flex h-56 w-full items-center justify-center overflow-hidden rounded-2xl bg-neutral-50/80 p-2 border border-neutral-100">
-                <StoryDeck stories={stories.data} source={stories.source} />
+          {!isLoading ? (
+            <div className="space-y-6">
+              {/* Story Avatar Ring */}
+              <div className="flex justify-center py-2">
+                <StoryCircle
+                  stories={stories?.data || []}
+                  source={stories?.source}
+                  onOpenStory={(idx) => setActiveStoryIdx(idx)}
+                />
               </div>
-            )}
 
-            {/* Recent Posts Grid */}
-            {posts.length > 0 && (
-              <div>
+              {/* 2x2 Post Flip Grid */}
+              <div className="flex flex-col items-center">
                 <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
                   Recent Posts & Reels
                 </div>
-                <div className="grid grid-cols-4 gap-2">
-                  {posts.slice(0, 4).map((post) => {
-                    const img = post.thumbnail_url || post.media_url;
+                <div className="grid grid-cols-2 gap-2.5 p-1 bg-transparent">
+                  {posts.slice(0, 4).map((post, cellIdx) => {
+                    const img = post?.thumbnail_url || post?.media_url;
+                    const isReel = post?.media_product_type === "REELS";
+                    const permalink = post?.permalink || "https://instagram.com/menofmatrix.ai";
+
                     return (
                       <a
-                        key={post.id}
-                        href={post.permalink || undefined}
+                        key={post.id || cellIdx}
+                        href={permalink}
                         target="_blank"
                         rel="noreferrer"
-                        className="group relative aspect-square overflow-hidden rounded-xl bg-neutral-100 shadow-xs border border-white/50"
+                        className="group relative h-[84px] w-[84px] sm:h-[96px] sm:w-[96px] overflow-hidden rounded-2xl bg-white/90 shadow-[0_6px_16px_rgba(0,0,0,0.06)] ring-1 ring-black/5 transition-transform duration-200 hover:scale-105"
                       >
-                        {img && (
+                        {img ? (
                           <img
                             src={img}
                             alt=""
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                            draggable={false}
                           />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-neutral-100 text-neutral-400">
+                            <SiInstagram className="h-6 w-6" />
+                          </div>
                         )}
                         <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
-                        {post.media_product_type === "REELS" && (
-                          <span className="absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-xs">
-                            <HiOutlinePlay className="h-2 w-2" />
+                        {isReel && (
+                          <span className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white backdrop-blur-xs shadow-xs">
+                            <HiOutlinePlay className="h-2.5 w-2.5" />
                           </span>
                         )}
                       </a>
@@ -1082,43 +1093,61 @@ function MobileBentoFeed({ data, stories, posts, followers, onOpenTweet }) {
                   })}
                 </div>
               </div>
-            )}
 
-            {/* Community Follower Avatar Bubbles Ribbon */}
-            {followers.length > 0 && (
-              <div className="pt-2">
-                <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
-                  <span>Community Network</span>
-                  <span>{followers.length}+ active</span>
+              {/* Community Follower Ribbon */}
+              {followers?.length > 0 && (
+                <div className="pt-2 border-t border-neutral-100/80">
+                  <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
+                    <span>Community Network</span>
+                    <span>{followers.length}+ active</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {followers.slice(0, 16).map((follower, idx) => (
+                      <div
+                        key={follower.id || idx}
+                        title={follower.username ? `@${follower.username}` : follower.full_name}
+                        className="group relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white bg-neutral-200 shadow-xs ring-1 ring-black/5 transition-transform hover:scale-110"
+                      >
+                        {follower.profile_pic_url ? (
+                          <img
+                            src={follower.profile_pic_url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-neutral-400">
+                            {follower.username?.[0]?.toUpperCase() || "M"}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {followers.slice(0, 14).map((follower, idx) => (
-                    <div
-                      key={follower.id || idx}
-                      title={follower.username ? `@${follower.username}` : follower.full_name}
-                      className="group relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white bg-neutral-200 shadow-xs ring-1 ring-black/5"
-                    >
-                      {follower.profile_pic_url ? (
-                        <img
-                          src={follower.profile_pic_url}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-neutral-400">
-                          {follower.username?.[0]?.toUpperCase() || "M"}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              )}
+            </div>
+          ) : (
+            /* Instagram Skeleton Placeholder */
+            <div className="space-y-6">
+              <div className="flex justify-center py-2">
+                <div className="h-16 w-16 rounded-full bg-neutral-200/60 animate-pulse ring-4 ring-neutral-100" />
               </div>
-            )}
-          </div>
+              <div className="grid grid-cols-2 gap-2.5 justify-items-center">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-[84px] w-[84px] rounded-2xl bg-neutral-200/50 animate-pulse" />
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 overflow-hidden py-1">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="h-9 w-9 shrink-0 rounded-full bg-neutral-200/40 animate-pulse" />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Card 2: YouTube Broadcast Hub */}
-        {videos.length > 0 && (
+        {/* Column 2 on Tablet: YouTube + Twitter stacked */}
+        <div className="flex flex-col gap-5">
+          {/* Card 2: YouTube Broadcast Hub */}
           <div className="relative overflow-hidden rounded-3xl border border-white/80 bg-white/90 p-5 shadow-[0_14px_36px_rgba(60,50,35,0.06),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-xl transition-all duration-300 hover:shadow-[0_18px_42px_rgba(60,50,35,0.1)]">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
             <div className="mb-4 flex items-center justify-between">
@@ -1144,55 +1173,74 @@ function MobileBentoFeed({ data, stories, posts, followers, onOpenTweet }) {
               )}
             </div>
 
-            {/* Featured Video */}
-            {recentVideo && (
-              <a
-                href={recentVideo.video_url}
-                target="_blank"
-                rel="noreferrer"
-                className="group block overflow-hidden rounded-2xl bg-neutral-50/90 p-2.5 transition-all hover:bg-neutral-100/90 border border-neutral-100"
-              >
-                <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-neutral-900 shadow-sm">
-                  <img
-                    src={recentVideo.thumbnail_url}
-                    alt=""
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/35">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-neutral-900 shadow-lg transition-transform group-hover:scale-110">
-                      <HiOutlinePlay className="h-5 w-5 translate-x-[1px]" />
+            {!isLoading ? (
+              <>
+                {/* Featured Video */}
+                {recentVideo && (
+                  <a
+                    href={recentVideo.video_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group block overflow-hidden rounded-2xl bg-neutral-50/90 p-2.5 transition-all hover:bg-neutral-100/90 border border-neutral-100"
+                  >
+                    <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-neutral-900 shadow-sm">
+                      <img
+                        src={recentVideo.thumbnail_url}
+                        alt=""
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/35">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-neutral-900 shadow-lg transition-transform group-hover:scale-110">
+                          <HiOutlinePlay className="h-5 w-5 translate-x-[1px]" />
+                        </div>
+                      </div>
+                      <span className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[9px] font-semibold tracking-wide uppercase text-white backdrop-blur-xs">
+                        Latest Drop
+                      </span>
+                      <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[9px] text-white backdrop-blur-xs">
+                        {formatViewCount(recentVideo.view_count)} views
+                      </span>
                     </div>
-                  </div>
-                  <span className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[9px] font-semibold tracking-wide uppercase text-white backdrop-blur-xs">
-                    Latest Drop
-                  </span>
-                  <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[9px] text-white backdrop-blur-xs">
-                    {formatViewCount(recentVideo.view_count)} views
-                  </span>
-                </div>
-                <div className="mt-2.5 px-1">
-                  <h3 className={`${poppins.className} line-clamp-2 text-xs font-semibold text-neutral-900`}>
-                    {recentVideo.title}
-                  </h3>
-                </div>
-              </a>
-            )}
+                    <div className="mt-2.5 px-1">
+                      <h3 className={`${poppins.className} line-clamp-2 text-xs font-semibold text-neutral-900`}>
+                        {recentVideo.title}
+                      </h3>
+                    </div>
+                  </a>
+                )}
 
-            {/* Secondary Videos List */}
-            {otherVideos.length > 0 && (
-              <div className="mt-3 divide-y divide-neutral-100">
-                {otherVideos.map((video) => (
-                  <div key={video.id} className="py-2">
-                    <VideoRow video={video} />
+                {/* Secondary Videos List */}
+                {otherVideos.length > 0 && (
+                  <div className="mt-3 divide-y divide-neutral-100">
+                    {otherVideos.map((video) => (
+                      <div key={video.id} className="py-2">
+                        <VideoRow video={video} />
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
+              </>
+            ) : (
+              /* YouTube Skeleton */
+              <div className="space-y-3">
+                <div className="aspect-video w-full rounded-2xl bg-neutral-200/50 animate-pulse" />
+                <div className="h-3.5 w-3/4 rounded-full bg-neutral-200/40 animate-pulse" />
+                <div className="space-y-2 pt-2">
+                  {[1, 2].map((n) => (
+                    <div key={n} className="flex items-center gap-3">
+                      <div className="h-10 w-16 shrink-0 rounded-lg bg-neutral-200/40 animate-pulse" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-2.5 w-full rounded-full bg-neutral-200/30 animate-pulse" />
+                        <div className="h-2 w-1/3 rounded-full bg-neutral-200/20 animate-pulse" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
-        )}
 
-        {/* Card 3: X / Twitter Pulse */}
-        {tweets.length > 0 && (
+          {/* Card 3: X / Twitter Pulse */}
           <div className="relative overflow-hidden rounded-3xl border border-white/80 bg-white/90 p-5 shadow-[0_14px_36px_rgba(60,50,35,0.06),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-xl transition-all duration-300 hover:shadow-[0_18px_42px_rgba(60,50,35,0.1)]">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
             <div className="mb-4 flex items-center justify-between">
@@ -1220,16 +1268,41 @@ function MobileBentoFeed({ data, stories, posts, followers, onOpenTweet }) {
               )}
             </div>
 
-            <div className="divide-y divide-neutral-100">
-              {tweets.slice(0, 3).map((tweet, i) => (
-                <div key={tweet.id || i} className="py-2">
-                  <MiniTweet id={tweet.id} fallbackText={tweet.text} onOpen={onOpenTweet} />
-                </div>
-              ))}
-            </div>
+            {!isLoading ? (
+              <div className="divide-y divide-neutral-100">
+                {tweets.slice(0, 3).map((tweet, i) => (
+                  <div key={tweet.id || i} className="py-2">
+                    <MiniTweet id={tweet.id} fallbackText={tweet.text} onOpen={onOpenTweet} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Twitter Skeleton */
+              <div className="space-y-3">
+                {[1, 2].map((n) => (
+                  <div key={n} className="flex gap-2.5 items-start py-2">
+                    <div className="h-8 w-8 shrink-0 rounded-full bg-neutral-200/50 animate-pulse" />
+                    <div className="flex-1 space-y-1.5 pt-1">
+                      <div className="h-2.5 w-full rounded-full bg-neutral-200/40 animate-pulse" />
+                      <div className="h-2.5 w-3/4 rounded-full bg-neutral-200/30 animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
+
+      {/* Story Modal popup on Mobile/Tablet */}
+      {activeStoryIdx !== null && stories?.data?.length > 0 && (
+        <StoryModal
+          stories={stories.data}
+          initialIndex={activeStoryIdx}
+          source={stories.source}
+          onClose={() => setActiveStoryIdx(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1612,6 +1685,7 @@ export default function Social() {
           stories={stories}
           posts={posts}
           followers={followers}
+          isLoading={!isLoaded}
           onOpenTweet={setOpenTweetId}
         />
       </div>
