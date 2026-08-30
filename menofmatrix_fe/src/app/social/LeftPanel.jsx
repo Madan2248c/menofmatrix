@@ -106,6 +106,7 @@ export function StoryModal({ stories = [], initialIndex = 0, source, onClose }) 
   const count = stories.length;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -126,6 +127,7 @@ export function StoryModal({ stories = [], initialIndex = 0, source, onClose }) 
 
   useEffect(() => {
     if (count === 0 || isPaused) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setProgress(0);
     const duration = 5000;
     const interval = 50;
@@ -134,7 +136,11 @@ export function StoryModal({ stories = [], initialIndex = 0, source, onClose }) 
     const t = setInterval(() => {
       setProgress((p) => {
         if (p >= 100) {
-          setIndex((i) => (i + 1) % count);
+          if (index === count - 1) {
+            onClose();
+            return 100;
+          }
+          setIndex((i) => i + 1);
           return 0;
         }
         return p + step;
@@ -142,7 +148,7 @@ export function StoryModal({ stories = [], initialIndex = 0, source, onClose }) 
     }, interval);
 
     return () => clearInterval(t);
-  }, [index, count, isPaused]);
+  }, [index, count, isPaused, onClose]);
 
   if (!mounted || count === 0) return null;
   const story = stories[index];
@@ -225,14 +231,18 @@ export function StoryModal({ stories = [], initialIndex = 0, source, onClose }) 
             className="absolute inset-y-0 left-0 w-1/3 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
-              setIndex((i) => (i > 0 ? i - 1 : count - 1));
+              setIndex((i) => Math.max(i - 1, 0));
             }}
           />
           <div
             className="absolute inset-y-0 right-0 w-1/3 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
-              setIndex((i) => (i + 1) % count);
+              if (index === count - 1) {
+                onClose();
+              } else {
+                setIndex((i) => i + 1);
+              }
             }}
           />
         </div>
@@ -294,6 +304,77 @@ export function StoryDeck(props) {
 // 2x2 animated posts grid – cycles posts sequentially, flipping one card at a time.
 // Centred in the bottom half of the panel with a transparent container and dot indicators.
 // ---------------------------------------------------------------------------
+
+
+function InstagramPostCard({ post, actualIdx, cellIdx, isFlipping, count }) {
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const cardRef = useRef(null);
+
+  function handleMouseMove(e) {
+    const el = cardRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const px = (x / rect.width - 0.5) * 20; // max 10 deg
+    const py = (y / rect.height - 0.5) * -20; // max 10 deg
+    setTilt({ x: px, y: py });
+  }
+
+  function handleMouseLeave() {
+    setTilt({ x: 0, y: 0 });
+  }
+
+  const img = post?.thumbnail_url || post?.media_url;
+  const isReel = post?.media_product_type === "REELS";
+  const permalink = post?.permalink || "https://instagram.com/menofmatrix.ai";
+
+  return (
+    <a
+      href={permalink}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`Open Instagram post ${actualIdx + 1}`}
+      className="group relative h-[74px] w-[74px] focus:outline-none"
+      style={{ perspective: "600px" }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      <div
+        ref={cardRef}
+        className="relative h-full w-full overflow-hidden rounded-2xl bg-white/90 backdrop-blur-md shadow-[0_8px_20px_rgba(0,0,0,0.08)] ring-1 ring-black/5 transition-transform duration-300 ease-out"
+        style={{
+          transform: isFlipping
+            ? "rotateY(90deg)"
+            : `scale(${tilt.x !== 0 || tilt.y !== 0 ? 1.05 : 1}) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
+          transformStyle: "preserve-3d",
+          backfaceVisibility: "hidden",
+        }}
+      >
+        {img ? (
+          <img
+            src={img}
+            alt=""
+            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+            draggable={false}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-neutral-100 text-neutral-400">
+            <SiInstagram className="h-6 w-6" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+        <div className="absolute -inset-[100%] bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.35)_50%,transparent_75%)] translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out pointer-events-none" />
+        {isReel && (
+          <span className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white backdrop-blur-xs shadow-xs">
+            <HiOutlinePlay className="h-2.5 w-2.5" />
+          </span>
+        )}
+      </div>
+    </a>
+  );
+}
+
 export function MiniPostsGrid({ posts = [], gridRef }) {
   const count = posts?.length || 0;
   const [cellPostIndices, setCellPostIndices] = useState([0, 1, 2, 3]);
@@ -314,7 +395,6 @@ export function MiniPostsGrid({ posts = [], gridRef }) {
       setFlippingCell(cellIdx);
       setLatestFlippedIndex(nextPostIdx);
 
-      // Mid-flip: Swap the post index for that cell
       setTimeout(() => {
         setCellPostIndices((prev) => {
           const nextIndices = [...prev];
@@ -324,7 +404,6 @@ export function MiniPostsGrid({ posts = [], gridRef }) {
         nextPostIndexRef.current = (nextPostIdx + 1) % count;
       }, 300);
 
-      // End flip
       setTimeout(() => {
         setFlippingCell(null);
         nextCellToFlipRef.current = (cellIdx + 1) % 4;
@@ -352,7 +431,6 @@ export function MiniPostsGrid({ posts = [], gridRef }) {
     );
   }
 
-  // Active indices set to check if a dot corresponds to any currently visible post
   const visibleIndices = new Set(cellPostIndices.map((idx) => idx % count));
 
   return (
@@ -365,55 +443,18 @@ export function MiniPostsGrid({ posts = [], gridRef }) {
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
-        {/* Transparent Grid */}
         <div className="grid grid-cols-2 gap-2 p-1 bg-transparent">
           {cellPostIndices.map((postIdx, cellIdx) => {
             const actualIdx = postIdx % count;
-            const post = posts[actualIdx];
-            const img = post?.thumbnail_url || post?.media_url;
-            const isReel = post?.media_product_type === "REELS";
-            const isFlipping = flippingCell === cellIdx;
-            const permalink = post?.permalink || "https://instagram.com/menofmatrix.ai";
-
             return (
-              <a
+              <InstagramPostCard
                 key={cellIdx}
-                href={permalink}
-                target="_blank"
-                rel="noreferrer"
-                aria-label={`Open Instagram post ${actualIdx + 1}`}
-                className="group relative h-[74px] w-[74px] focus:outline-none"
-                style={{ perspective: "400px" }}
-              >
-                <div
-                  className="relative h-full w-full overflow-hidden rounded-2xl bg-white/90 backdrop-blur-md shadow-[0_8px_20px_rgba(0,0,0,0.08)] ring-1 ring-black/5 transition-transform duration-200 group-hover:scale-105"
-                  style={{
-                    transform: isFlipping ? "rotateY(90deg)" : "rotateY(0deg)",
-                    transition: "transform 0.3s cubic-bezier(0.4,0,0.2,1)",
-                    transformStyle: "preserve-3d",
-                    backfaceVisibility: "hidden",
-                  }}
-                >
-                  {img ? (
-                    <img
-                      src={img}
-                      alt=""
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-                      draggable={false}
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-neutral-100 text-neutral-400">
-                      <SiInstagram className="h-6 w-6" />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
-                  {isReel && (
-                    <span className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white backdrop-blur-xs shadow-xs">
-                      <HiOutlinePlay className="h-2.5 w-2.5" />
-                    </span>
-                  )}
-                </div>
-              </a>
+                post={posts[actualIdx]}
+                actualIdx={actualIdx}
+                cellIdx={cellIdx}
+                isFlipping={flippingCell === cellIdx}
+                count={count}
+              />
             );
           })}
         </div>
@@ -854,6 +895,7 @@ export default function LeftPanel({
   stories: propStories,
   posts: propPosts,
   followers: propFollowers,
+  isLoading: propIsLoading,
   transparent = false,
   onMouseEnter,
   onMouseLeave,
@@ -916,7 +958,59 @@ export default function LeftPanel({
 
   const [activeStoryIndex, setActiveStoryIndex] = useState(null);
 
-  if (!box) return null;
+  const isLoading = propIsLoading !== undefined ? propIsLoading : (stories.data.length === 0 && posts.length === 0);
+
+  if (isLoading) {
+    return (
+      <div
+        ref={resolvedRef}
+        className={
+          transparent
+            ? `${poppins.className} fixed overflow-hidden transition-all duration-300 bg-transparent border-none shadow-none backdrop-blur-none`
+            : `${poppins.className} fixed overflow-hidden rounded-3xl border border-white/80 bg-white/90 shadow-[0_16px_40px_rgba(60,50,35,0.08),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-xl transition-all duration-300`
+        }
+        style={box}
+      >
+        {!transparent && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
+        )}
+        {/* Shimmering Story Circle Skeleton at top-5 */}
+        <div className="absolute top-5 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 pointer-events-none">
+          <div className="flex h-[72px] w-[72px] items-center justify-center rounded-full p-[3px] bg-gradient-to-tr from-neutral-200 to-neutral-300 animate-pulse">
+            <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white p-[2px]">
+              <div className="h-full w-full rounded-full bg-neutral-200" />
+            </div>
+          </div>
+          <div className="h-2.5 w-12 rounded-full bg-neutral-200 animate-pulse" />
+        </div>
+
+        {/* Ambient Floating Follower Bubbles Skeleton */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute left-[12%] top-[20%] h-8 w-8 rounded-full bg-neutral-200/50 animate-pulse" />
+          <div className="absolute left-[78%] top-[22%] h-10 w-10 rounded-full bg-neutral-200/40 animate-pulse" />
+          <div className="absolute left-[82%] top-[45%] h-7 w-7 rounded-full bg-neutral-200/50 animate-pulse" />
+          <div className="absolute left-[10%] top-[42%] h-11 w-11 rounded-full bg-neutral-200/40 animate-pulse" />
+          <div className="absolute left-[45%] top-[48%] h-9 w-9 rounded-full bg-neutral-200/50 animate-pulse" />
+          <div className="absolute left-[20%] top-[60%] h-8 w-8 rounded-full bg-neutral-200/40 animate-pulse" />
+          <div className="absolute left-[74%] top-[62%] h-10 w-10 rounded-full bg-neutral-200/50 animate-pulse" />
+        </div>
+
+        {/* 2x2 Posts Grid Skeleton at bottom-5 */}
+        <div className="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+          <div className="grid grid-cols-2 gap-2 p-1 bg-transparent">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-[74px] w-[74px] rounded-2xl bg-neutral-200/60 shadow-sm animate-pulse" />
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5 bg-white/65 backdrop-blur-md py-1 px-2.5 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.04)] ring-1 ring-black/5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-1.5 w-1.5 rounded-full bg-neutral-300 animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

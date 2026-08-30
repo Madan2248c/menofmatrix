@@ -122,15 +122,24 @@ function Pill({ platform, data, className = "", transparent = false }) {
   );
 }
 
-function SkeletonPill({ nameWidth }) {
+function SkeletonPill({ nameWidth = "w-28", transparent = false }) {
   return (
-    <div className="relative flex w-full max-w-sm sm:w-80 items-center gap-3.5 overflow-hidden rounded-full border border-white/80 bg-white/75 px-5 py-3.5 shadow-[0_10px_28px_rgba(60,50,35,0.05)] backdrop-blur-xl">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-60" />
+    <div
+      className={
+        transparent
+          ? "group relative flex w-full max-w-sm sm:w-80 items-center gap-3.5 overflow-hidden px-5 py-3.5 bg-transparent border-none shadow-none backdrop-blur-none"
+          : "group relative flex w-full max-w-sm sm:w-80 items-center gap-3.5 overflow-hidden rounded-full border border-white/85 bg-white/85 px-5 py-3.5 shadow-[0_10px_28px_rgba(60,50,35,0.06)] backdrop-blur-xl"
+      }
+    >
+      {!transparent && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
+      )}
       <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-neutral-200/80" />
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="h-3.5 w-20 animate-pulse rounded-full bg-neutral-200/80" />
-        <div className={`h-2.5 animate-pulse rounded-full bg-neutral-100/90 ${nameWidth}`} />
+        <div className={`h-2.5 animate-pulse rounded-full bg-neutral-200/60 ${nameWidth}`} />
       </div>
+      <div className="h-7 w-16 shrink-0 animate-pulse rounded-full bg-neutral-200/60" />
     </div>
   );
 }
@@ -455,12 +464,13 @@ function TweetsBox({
   twitter,
   twitterRef,
   onOpenTweet,
+  isLoading: propIsLoading,
   transparent = false,
   onMouseEnter,
   onMouseLeave,
   containerRef,
 }) {
-  const [box, setBox] = useState(null); // null = not measured yet; { left, top, width, height, gapLeft } | false
+  const [box, setBox] = useState(null); // null = not measured yet; { left, top, width, height } | false
 
   useEffect(() => {
     function measure() {
@@ -488,7 +498,7 @@ function TweetsBox({
   if (!box) return null;
 
   const tweets = twitter?.tweets || [];
-  const isLoading = tweets.length === 0;
+  const isLoading = propIsLoading !== undefined ? propIsLoading : tweets.length === 0;
 
   if (isLoading) {
     const gapLeft = box.gapLeft || 0;
@@ -801,12 +811,13 @@ function VideoCarousel({ videos, boxHeight }) {
 function TopBox({
   youtubeRef,
   videos,
+  isLoading: propIsLoading,
   transparent = false,
   onMouseEnter,
   onMouseLeave,
   containerRef,
 }) {
-  const [box, setBox] = useState(null); // null = not measured yet; { left, top, width, height, gapLeft } | false
+  const [box, setBox] = useState(null); // null = not measured yet; { left, top, width, height } | false
 
   useEffect(() => {
     function measure() {
@@ -833,7 +844,7 @@ function TopBox({
 
   if (!box) return null;
 
-  const isLoading = videos.length === 0;
+  const isLoading = propIsLoading !== undefined ? propIsLoading : videos.length === 0;
 
   if (isLoading) {
     const gapLeft = box.gapLeft || 0;
@@ -1410,6 +1421,7 @@ export default function Social() {
   const [posts, setPosts] = useState([]);
   const [followers, setFollowers] = useState([]);
   const [openTweetId, setOpenTweetId] = useState(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
@@ -1440,27 +1452,17 @@ export default function Social() {
   const videos = data?.youtube?.videos || [];
 
   useEffect(() => {
-    fetch(`${API}/social`)
-      .then((r) => r.ok ? r.json() : Promise.reject(r))
-      .then(setData)
-      .catch(() => {});
-    fetch("/api/stories?limit=8")
-      .then((r) => r.ok ? r.json() : Promise.reject(r))
-      .then((d) => setStories({ data: d.data || [], source: d.source }))
-      .catch(() => {});
-    fetch("/api/posts?limit=8")
-      .then((r) => r.ok ? r.json() : Promise.reject(r))
-      .then((d) => setPosts(d.data || []))
-      .catch(() => {});
-    fetch("/api/public/instagram/followers?limit=200")
-      .then((r) => r.ok ? r.json() : Promise.reject(r))
-      .then((d) => setFollowers(d.data || []))
-      .catch(() => {});
+    Promise.allSettled([
+      fetch(`${API}/social`).then((r) => r.ok ? r.json() : Promise.reject(r)).then(setData).catch(() => {}),
+      fetch("/api/stories?limit=8").then((r) => r.ok ? r.json() : Promise.reject(r)).then((d) => setStories({ data: d.data || [], source: d.source })).catch(() => {}),
+      fetch("/api/posts?limit=8").then((r) => r.ok ? r.json() : Promise.reject(r)).then((d) => setPosts(d.data || [])).catch(() => {}),
+      fetch("/api/public/instagram/followers?limit=200").then((r) => r.ok ? r.json() : Promise.reject(r)).then((d) => setFollowers(d.data || [])).catch(() => {}),
+    ]).then(() => {
+      setIsLoaded(true);
+    });
   }, []);
 
   useEffect(() => {
-    if (!data) return;
-
     function measure() {
       // 1. Twitter / X (Pill + TweetsBox)
       const twitterPill = twitterRef.current;
@@ -1505,7 +1507,7 @@ export default function Social() {
       clearTimeout(t);
       window.removeEventListener("resize", measure);
     };
-  }, [data, tweets.length, videos.length]);
+  }, [isLoaded, data, tweets.length, videos.length]);
 
   return (
     <div className="relative flex min-h-dvh w-full flex-1 flex-col items-center overflow-x-hidden bg-transparent">
@@ -1534,7 +1536,7 @@ export default function Social() {
           <ConvexTwitterBackground layout={convexLayout} isHovered={isTwitterHovered} />
         )}
         <div className="flex flex-col gap-4" style={{ zoom: 0.8 }}>
-          {data ? (
+          {isLoaded && data ? (
             <>
               <div
                 ref={instagramRef}
@@ -1560,12 +1562,14 @@ export default function Social() {
             </>
           ) : (
             <>
-              <SkeletonPill nameWidth="w-32" />
+              <div ref={instagramRef}>
+                <SkeletonPill nameWidth="w-32" transparent={true} />
+              </div>
               <div ref={youtubeRef}>
-                <SkeletonPill nameWidth="w-24" />
+                <SkeletonPill nameWidth="w-24" transparent={true} />
               </div>
               <div ref={twitterRef}>
-                <SkeletonPill nameWidth="w-28" />
+                <SkeletonPill nameWidth="w-28" transparent={true} />
               </div>
             </>
           )}
@@ -1574,32 +1578,31 @@ export default function Social() {
           stories={stories}
           posts={posts}
           followers={followers}
+          isLoading={!isLoaded}
           transparent={true}
           onMouseEnter={() => setIsInstagramHovered(true)}
           onMouseLeave={() => setIsInstagramHovered(false)}
           containerRef={leftPanelRef}
         />
-        {videos.length > 0 && (
-          <TopBox
-            youtubeRef={youtubeRef}
-            videos={videos}
-            transparent={true}
-            onMouseEnter={() => setIsYoutubeHovered(true)}
-            onMouseLeave={() => setIsYoutubeHovered(false)}
-            containerRef={topBoxRef}
-          />
-        )}
-        {tweets.length > 0 && (
-          <TweetsBox
-            twitter={data.twitter}
-            twitterRef={twitterRef}
-            onOpenTweet={setOpenTweetId}
-            transparent={true}
-            onMouseEnter={() => setIsTwitterHovered(true)}
-            onMouseLeave={() => setIsTwitterHovered(false)}
-            containerRef={tweetsBoxRef}
-          />
-        )}
+        <TopBox
+          youtubeRef={youtubeRef}
+          videos={videos}
+          isLoading={!isLoaded}
+          transparent={true}
+          onMouseEnter={() => setIsYoutubeHovered(true)}
+          onMouseLeave={() => setIsYoutubeHovered(false)}
+          containerRef={topBoxRef}
+        />
+        <TweetsBox
+          twitter={data?.twitter}
+          twitterRef={twitterRef}
+          isLoading={!isLoaded}
+          onOpenTweet={setOpenTweetId}
+          transparent={true}
+          onMouseEnter={() => setIsTwitterHovered(true)}
+          onMouseLeave={() => setIsTwitterHovered(false)}
+          containerRef={tweetsBoxRef}
+        />
       </div>
 
       {/* Mobile & Tablet Bento Feed View */}
