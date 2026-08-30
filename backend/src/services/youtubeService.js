@@ -29,17 +29,18 @@ function loadClientSecret() {
     const raw = readFileSync(path, 'utf8');
     const parsed = JSON.parse(raw);
     return parsed.web || parsed.installed || parsed;
-  } catch (err) {
-    console.error(`[youtube] cannot load client secret from ${path}: ${err.message}`);
-    throw new Error('Google client secret not found');
+  } catch {
+    return null;
   }
 }
 
 function getConfig() {
-  const secret = loadClientSecret();
+  // The client_secret_*.json file is optional — GOOGLE_CLIENT_ID/SECRET env
+  // vars are enough on their own, and are what's actually configured in prod.
+  const secret = loadClientSecret() || {};
   const clientId = process.env.GOOGLE_CLIENT_ID || secret.client_id;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET || secret.client_secret;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || secret.redirect_uris?.[0];
   if (!clientId || !clientSecret || !redirectUri) {
     throw new Error('GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and GOOGLE_REDIRECT_URI are required');
   }
@@ -77,11 +78,14 @@ export async function exchangeCodeForToken(code) {
   if (!channel?.id) throw new Error('No YouTube channel found for this account');
 
   const expiresAt = tokens.expiry_date ? new Date(tokens.expiry_date) : new Date(Date.now() + 3600 * 1000);
+  const avatarUrl =
+    channel.snippet?.thumbnails?.medium?.url || channel.snippet?.thumbnails?.default?.url || null;
   const { rows } = await query(
-    `INSERT INTO youtube_accounts (youtube_channel_id, channel_title, access_token, refresh_token, expires_at)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO youtube_accounts (youtube_channel_id, channel_title, avatar_url, access_token, refresh_token, expires_at)
+     VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT (youtube_channel_id) DO UPDATE SET
        channel_title = COALESCE(EXCLUDED.channel_title, youtube_accounts.channel_title),
+       avatar_url = COALESCE(EXCLUDED.avatar_url, youtube_accounts.avatar_url),
        access_token = EXCLUDED.access_token,
        refresh_token = EXCLUDED.refresh_token,
        expires_at = EXCLUDED.expires_at,
@@ -90,6 +94,7 @@ export async function exchangeCodeForToken(code) {
     [
       channel.id,
       channel.snippet?.title || null,
+      avatarUrl,
       tokens.access_token,
       tokens.refresh_token,
       expiresAt,
@@ -173,6 +178,12 @@ export async function fetchChannel(accountId) {
        video_count = EXCLUDED.video_count`,
     [accountId, numOrNull(stats.subscriberCount), numOrNull(stats.viewCount), numOrNull(stats.videoCount)]
   );
+
+  const avatarUrl =
+    channel.snippet?.thumbnails?.medium?.url || channel.snippet?.thumbnails?.default?.url || null;
+  if (avatarUrl) {
+    await query(`UPDATE youtube_accounts SET avatar_url = $2 WHERE id = $1`, [accountId, avatarUrl]);
+  }
 
   return {
     channelId: channel.id,

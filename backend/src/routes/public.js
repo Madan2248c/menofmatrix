@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { query } from '../config/db.js';
+import { fetchTwitterProfile } from '../services/twitterScrape.js';
 
 const router = Router();
 
@@ -13,10 +14,11 @@ const router = Router();
 router.get('/accounts', async (_req, res) => {
   try {
     const { rows } = await query(
-      `SELECT 'instagram' AS platform, id, username AS name, connected_at
+      `SELECT 'instagram' AS platform, id, username AS name, profile_picture_url AS avatar_url,
+              NULL AS external_id, connected_at
          FROM ig_accounts
        UNION ALL
-       SELECT 'youtube', id, channel_title, connected_at
+       SELECT 'youtube', id, channel_title, avatar_url, youtube_channel_id, connected_at
          FROM youtube_accounts
        ORDER BY platform, id`
     );
@@ -95,7 +97,7 @@ router.get('/followers', async (_req, res) => {
   try {
     const [ig, yt, igTrend, ytTrend] = await Promise.all([
       query(
-        `SELECT a.id AS account_id, a.username AS name,
+        `SELECT a.id AS account_id, a.username AS name, a.profile_picture_url AS avatar_url,
                 (SELECT followers_count FROM account_snapshots s
                   WHERE s.account_id = a.id ORDER BY snapshot_date DESC LIMIT 1) AS followers_count,
                 (SELECT followers_count FROM account_snapshots s
@@ -105,7 +107,7 @@ router.get('/followers', async (_req, res) => {
            FROM ig_accounts a ORDER BY a.id`
       ),
       query(
-        `SELECT c.id AS account_id, c.channel_title AS name,
+        `SELECT c.id AS account_id, c.channel_title AS name, c.avatar_url AS avatar_url,
                 (SELECT subscriber_count FROM youtube_account_snapshots s
                   WHERE s.account_id = c.id ORDER BY snapshot_date DESC LIMIT 1) AS followers_count,
                 (SELECT subscriber_count FROM youtube_account_snapshots s
@@ -138,6 +140,7 @@ router.get('/followers', async (_req, res) => {
         platform,
         account_id: a.account_id,
         name: a.name,
+        avatar_url: a.avatar_url || null,
         followers_count: a.followers_count == null ? null : Number(a.followers_count),
         prev_followers_count: a.prev_followers_count == null ? null : Number(a.prev_followers_count),
         delta:
@@ -158,6 +161,17 @@ router.get('/followers', async (_req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+/** Public: X (Twitter) profile — scraped live (no API/credentials), cached briefly. */
+router.get('/twitter', async (_req, res) => {
+  try {
+    const handle = process.env.TWITTER_HANDLE || 'menofmatrix';
+    const data = await fetchTwitterProfile(handle);
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({ error: err.message });
   }
 });
 

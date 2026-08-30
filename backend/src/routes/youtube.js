@@ -34,12 +34,16 @@ router.get('/auth/callback', async (req, res) => {
   if (!code) return res.status(400).send('Missing code');
   try {
     const result = await exchangeCodeForToken(code);
+    await fetchChannel(result.accountId).catch((err) =>
+      console.error('[youtube oauth] initial stats fetch failed:', err)
+    );
     res.send(
       `<h2>✅ YouTube connected</h2>
        <p><strong>${result.channelTitle}</strong> is now linked (account #${result.accountId}).</p>
        <p>You can close this tab and open the dashboard.</p>`
     );
   } catch (err) {
+    console.error('[youtube oauth] callback failed:', err);
     res.status(500).send(`Connection failed: ${err.message}`);
   }
 });

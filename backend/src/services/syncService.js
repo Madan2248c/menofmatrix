@@ -18,6 +18,12 @@ async function syncAccount(account) {
        media_count = EXCLUDED.media_count`,
     [account.id, profile.followers_count ?? null, profile.follows_count ?? null, profile.media_count ?? null]
   );
+  if (profile.profile_picture_url) {
+    await query(`UPDATE ig_accounts SET profile_picture_url = $2 WHERE id = $1`, [
+      account.id,
+      profile.profile_picture_url,
+    ]);
+  }
 
   // 2) All media (feed posts, carousels, reels + active stories)
   // /me/media does NOT include stories — they only come from /me/stories.
