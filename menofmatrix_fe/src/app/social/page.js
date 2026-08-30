@@ -198,10 +198,9 @@ function MiniTweet({ id, fallbackText, onOpen }) {
   }
 
   return (
-    <button
-      type="button"
+    <div
       onClick={() => onOpen(id)}
-      className={`${poppins.className} -m-1.5 flex gap-2.5 rounded-xl p-1.5 text-left transition-colors duration-150 hover:bg-neutral-50`}
+      className={`${poppins.className} -m-1.5 flex gap-2.5 rounded-xl p-1.5 text-left cursor-pointer transition-all duration-300 hover:bg-neutral-50/80 group/tweet`}
     >
       <img src={data.user.profile_image_url_https} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
       <div className="min-w-0 flex-1">
@@ -210,19 +209,35 @@ function MiniTweet({ id, fallbackText, onOpen }) {
         </p>
         <div className="mt-1 flex items-center text-[10px] text-neutral-400">
           <span>{formatTweetDate(data.created_at)}</span>
-          <span className="ml-auto flex items-center gap-3">
-            <span className="flex items-center gap-1">
-              <HiOutlineChatBubbleOvalLeft className="h-3 w-3" />
-              {formatLikeCount(data.conversation_count)}
-            </span>
-            <span className="flex items-center gap-1">
-              <HiOutlineHeart className="h-3 w-3" />
-              {formatLikeCount(data.favorite_count)}
-            </span>
-          </span>
+          <div className="ml-auto flex items-center gap-2 opacity-60 group-hover/tweet:opacity-100 transition-opacity duration-300">
+            {/* Reply intent */}
+            <a
+              href={`https://x.com/intent/tweet?in_reply_to=${id}`}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-0.5 hover:text-sky-500 transition-colors py-0.5 px-1 rounded-md hover:bg-sky-50"
+              title="Reply on X"
+            >
+              <HiOutlineChatBubbleOvalLeft className="h-3.5 w-3.5" />
+              <span>{formatLikeCount(data.conversation_count)}</span>
+            </a>
+            {/* Like intent */}
+            <a
+              href={`https://x.com/intent/like?tweet_id=${id}`}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-0.5 hover:text-rose-500 transition-colors py-0.5 px-1 rounded-md hover:bg-rose-50"
+              title="Like on X"
+            >
+              <HiOutlineHeart className="h-3.5 w-3.5" />
+              <span>{formatLikeCount(data.favorite_count)}</span>
+            </a>
+          </div>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -472,6 +487,59 @@ function TweetsBox({
 
   if (!box) return null;
 
+  const tweets = twitter?.tweets || [];
+  const isLoading = tweets.length === 0;
+
+  if (isLoading) {
+    const gapLeft = box.gapLeft || 0;
+    return (
+      <div
+        ref={containerRef}
+        className={
+          transparent
+            ? "fixed overflow-hidden transition-all duration-300 bg-transparent border-none shadow-none backdrop-blur-none"
+            : "fixed overflow-hidden rounded-3xl border border-white/80 bg-white/90 shadow-[0_16px_40px_rgba(60,50,35,0.08),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-xl transition-all duration-300"
+        }
+        style={{
+          left: box.left,
+          top: box.top,
+          width: box.width,
+          height: box.height,
+        }}
+      >
+        {!transparent && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
+        )}
+        <div
+          className="flex h-full flex-col py-4 pr-5"
+          style={{
+            paddingLeft: transparent ? `${gapLeft + 20}px` : "1.25rem",
+          }}
+        >
+          <div className="mb-1 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-neutral-300">
+            <span className="flex items-center gap-1.5 text-neutral-300">
+              <SiX className="h-3 w-3 text-neutral-300" />
+              Latest on X
+            </span>
+          </div>
+
+          <div className="flex flex-1 flex-col justify-evenly gap-3">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="flex gap-2.5 items-start py-2 border-b border-neutral-100/50 last:border-none">
+                <div className="h-9 w-9 shrink-0 rounded-full bg-neutral-200/50 animate-pulse" />
+                <div className="flex-1 space-y-2 pt-1">
+                  <div className="h-2.5 w-full rounded-full bg-neutral-200/40 animate-pulse" />
+                  <div className="h-2.5 w-4/5 rounded-full bg-neutral-200/30 animate-pulse" />
+                  <div className="h-2 w-1/4 rounded-full bg-neutral-200/20 animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -492,7 +560,12 @@ function TweetsBox({
       {!transparent && (
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
       )}
-      <div className="flex h-full flex-col p-5">
+      <div
+        className="flex h-full flex-col py-4 pr-5"
+        style={{
+          paddingLeft: transparent ? `${box.gapLeft + 20}px` : "1.25rem",
+        }}
+      >
         <div className="mb-1 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
           <span className="flex items-center gap-1.5 text-neutral-700">
             <SiX className="h-3 w-3 text-neutral-900" />
@@ -503,7 +576,7 @@ function TweetsBox({
           )}
         </div>
         <div className="flex flex-1 flex-col justify-evenly gap-3">
-          {twitter.tweets.slice(0, 2).map((tweet, i) => (
+          {tweets.slice(0, 2).map((tweet, i) => (
             <MiniTweet key={tweet.id || i} id={tweet.id} fallbackText={tweet.text} onOpen={onOpenTweet} />
           ))}
         </div>
@@ -568,8 +641,16 @@ function FeaturedVideoCard({ video, label }) {
     >
       <div className="relative min-h-0 w-full flex-1 overflow-hidden rounded-lg bg-neutral-100">
         <img src={video.thumbnail_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        <span className="absolute left-1.5 top-1.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-white">
-          {label}
+        <span className={`absolute left-2 top-2 z-10 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-white shadow-[0_4px_10px_rgba(255,0,0,0.25)] ${
+          label === "Latest" ? "bg-red-600/90" : "bg-neutral-900/90"
+        }`}>
+          {label === "Latest" && (
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-300" />
+            </span>
+          )}
+          <span>{label}</span>
         </span>
         <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-150 group-hover:bg-black/25">
           <div className="flex h-6 w-6 scale-90 items-center justify-center rounded-full bg-white/0 text-white opacity-0 transition-all duration-150 group-hover:scale-100 group-hover:bg-black/40 group-hover:opacity-100">
@@ -762,6 +843,78 @@ function TopBox({
 
   if (!box) return null;
 
+  const isLoading = videos.length === 0;
+
+  if (isLoading) {
+    const gapLeft = box.gapLeft || 0;
+    return (
+      <div
+        ref={containerRef}
+        className={
+          transparent
+            ? "fixed overflow-hidden transition-all duration-300 bg-transparent border-none shadow-none backdrop-blur-none"
+            : "fixed overflow-hidden rounded-3xl border border-white/80 bg-white/90 shadow-[0_16px_40px_rgba(60,50,35,0.08),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-xl transition-all duration-300"
+        }
+        style={{
+          left: box.left,
+          top: box.top,
+          width: box.width,
+          height: box.height,
+        }}
+      >
+        {!transparent && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
+        )}
+        <div
+          className="flex h-full flex-col py-4 pr-5"
+          style={{
+            paddingLeft: transparent ? `${gapLeft + 20}px` : "1.25rem",
+          }}
+        >
+          <div className="mb-2 flex shrink-0 items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-neutral-300">
+            <span className="flex items-center gap-1.5 text-neutral-300">
+              <SiYoutube className="h-3.5 w-3.5 text-neutral-300" />
+              More on YouTube
+            </span>
+            <span className="text-neutral-300">Broadcasts</span>
+          </div>
+
+          <div className="flex min-h-0 flex-1 gap-4">
+            {/* Left column - featured shimmers */}
+            <div className="flex min-h-0 w-[45%] flex-col gap-3">
+              <div className="flex flex-1 flex-col gap-2">
+                <div className="aspect-[16/10] w-full rounded-2xl bg-neutral-200/50 animate-pulse" />
+                <div className="h-3 w-3/4 rounded-full bg-neutral-200/40 animate-pulse" />
+                <div className="h-2 w-1/4 rounded-full bg-neutral-200/30 animate-pulse" />
+              </div>
+              <div className="flex flex-1 flex-col gap-2">
+                <div className="aspect-[16/10] w-full rounded-2xl bg-neutral-200/50 animate-pulse" />
+                <div className="h-3 w-3/4 rounded-full bg-neutral-200/40 animate-pulse" />
+                <div className="h-2 w-1/4 rounded-full bg-neutral-200/30 animate-pulse" />
+              </div>
+            </div>
+
+            {/* Vertical separator */}
+            <div className="h-full border-l border-neutral-100/50" />
+
+            {/* Right column - carousel shimmers */}
+            <div className="flex flex-1 flex-col gap-3 justify-center py-2">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="flex items-center gap-3">
+                  <div className="h-12 w-20 shrink-0 rounded-lg bg-neutral-200/50 animate-pulse" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-2.5 w-5/6 rounded-full bg-neutral-200/40 animate-pulse" />
+                    <div className="h-2 w-1/3 rounded-full bg-neutral-200/30 animate-pulse" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const recent = videos[0];
   const byViews = [...videos].sort((a, b) => (Number(b.view_count) || 0) - (Number(a.view_count) || 0));
   let topViewed = byViews[0];
@@ -789,7 +942,12 @@ function TopBox({
       {!transparent && (
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
       )}
-      <div className="flex h-full flex-col p-5">
+      <div
+        className="flex h-full flex-col py-4 pr-5"
+        style={{
+          paddingLeft: transparent ? `${box.gapLeft + 20}px` : "1.25rem",
+        }}
+      >
         <div className="mb-2 flex shrink-0 items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
           <span className="flex items-center gap-1.5 text-neutral-700">
             <SiYoutube className="h-3.5 w-3.5 text-red-600" />
@@ -1107,7 +1265,7 @@ function ConvexInstagramBackground({ layout, isHovered }) {
 
   return (
     <div
-      className="fixed pointer-events-none z-0 transition-all duration-300 ease-out"
+      className="fixed pointer-events-none z-0"
       style={{
         left: panel.left,
         top: panel.top,
@@ -1116,11 +1274,15 @@ function ConvexInstagramBackground({ layout, isHovered }) {
         filter: isHovered
           ? "drop-shadow(0 20px 48px rgba(225,48,108,0.18)) drop-shadow(0 1px 3px rgba(0,0,0,0.04))"
           : "drop-shadow(0 16px 40px rgba(60,50,35,0.08)) drop-shadow(0 1px 3px rgba(0,0,0,0.03))",
+        transition: `filter 500ms ${SOFT_EASE}`,
       }}
     >
       <div
-        className="absolute inset-0 bg-white/90 backdrop-blur-xl transition-colors duration-300"
-        style={{ clipPath: `path('${pathD}')` }}
+        className="absolute inset-0 bg-white/90 backdrop-blur-xl"
+        style={{
+          clipPath: `path('${pathD}')`,
+          transition: `background-color 500ms ${SOFT_EASE}`,
+        }}
       />
       <div
         className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-85"
@@ -1132,7 +1294,7 @@ function ConvexInstagramBackground({ layout, isHovered }) {
           fill="none"
           stroke={isHovered ? "rgba(225, 48, 108, 0.25)" : "rgba(255, 255, 255, 0.85)"}
           strokeWidth="1.2"
-          className="transition-all duration-300"
+          style={{ transition: `stroke 500ms ${SOFT_EASE}` }}
         />
       </svg>
     </div>
@@ -1263,6 +1425,16 @@ export default function Social() {
   const [followers, setFollowers] = useState([]);
   const [openTweetId, setOpenTweetId] = useState(null);
 
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    function handleMouseMove(e) {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    }
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
   const instagramRef = useRef(null);
   const youtubeRef = useRef(null);
   const twitterRef = useRef(null);
@@ -1351,6 +1523,14 @@ export default function Social() {
 
   return (
     <div className="relative flex min-h-dvh w-full flex-1 flex-col items-center overflow-x-hidden bg-transparent">
+      {/* Interactive mouse-tracking spotlight radial gradient beam */}
+      <div
+        className="pointer-events-none fixed inset-0 z-[-1] transition-opacity duration-300 opacity-60"
+        style={{
+          background: `radial-gradient(650px circle at ${mousePos.x}px ${mousePos.y}px, rgba(219, 154, 255, 0.05), rgba(244, 63, 94, 0.03), transparent 70%)`,
+        }}
+      />
+
       {/* Ambient background aura glow spheres for glassmorphism refraction */}
       <div className="pointer-events-none absolute -top-24 left-1/4 h-80 w-80 rounded-full bg-pink-400/10 blur-[100px]" />
       <div className="pointer-events-none absolute top-1/3 right-1/4 h-80 w-80 rounded-full bg-red-400/8 blur-[100px]" />
