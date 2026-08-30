@@ -4,8 +4,15 @@ import { SiInstagram, SiYoutube, SiX } from "react-icons/si";
 import { FloatingDock } from "@/components/ui/floating-dock";
 
 const items = [
-  { title: "Newsletter", icon: <HiOutlineEnvelopeOpen className="h-full w-full" />, href: "/news" },
-  { title: "Blog", icon: <HiOutlinePencilSquare className="h-full w-full" />, href: "/blogs" },
+  {
+    title: "Feed",
+    wide: true,
+    href: "/feed",
+    icons: [
+      <HiOutlinePencilSquare key="blog" className="h-4 w-4" />,
+      <HiOutlineEnvelopeOpen key="news" className="h-4 w-4" />,
+    ],
+  },
   {
     title: "MenOfMatrix",
     large: true,

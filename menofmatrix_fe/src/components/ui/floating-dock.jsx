@@ -41,7 +41,15 @@ const FloatingDockDesktop = ({
           mouseX={mouseX}
           key={item.title}
           {...item}
-          selected={!item.noActiveIndicator && (item.wide ? ["/social", "/instagram", "/youtube"].includes(pathname) : pathname === item.href)}
+          selected={
+            !item.noActiveIndicator && (
+              item.wide
+                ? (item.title === "Social"
+                    ? ["/social", "/instagram", "/youtube"].includes(pathname)
+                    : ["/feed", "/blogs", "/news"].includes(pathname))
+                : pathname === item.href
+            )
+          }
         />
       ))}
       {groupedItems.length > 0 && (
