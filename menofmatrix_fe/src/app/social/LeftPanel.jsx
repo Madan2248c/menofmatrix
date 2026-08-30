@@ -958,6 +958,8 @@ export default function LeftPanel({
 
   const [activeStoryIndex, setActiveStoryIndex] = useState(null);
 
+  if (!box) return null;
+
   const isLoading = propIsLoading !== undefined ? propIsLoading : (stories.data.length === 0 && posts.length === 0);
 
   if (isLoading) {
@@ -969,7 +971,12 @@ export default function LeftPanel({
             ? `${poppins.className} fixed overflow-hidden transition-all duration-300 bg-transparent border-none shadow-none backdrop-blur-none`
             : `${poppins.className} fixed overflow-hidden rounded-3xl border border-white/80 bg-white/90 shadow-[0_16px_40px_rgba(60,50,35,0.08),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-xl transition-all duration-300`
         }
-        style={box}
+        style={{
+          left: box.left,
+          top: box.top,
+          width: box.width,
+          height: box.height,
+        }}
       >
         {!transparent && (
           <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
@@ -1021,7 +1028,12 @@ export default function LeftPanel({
             ? `${poppins.className} fixed overflow-hidden transition-all duration-300 bg-transparent border-none shadow-none backdrop-blur-none`
             : `${poppins.className} fixed overflow-hidden rounded-3xl border border-white/80 bg-white/90 shadow-[0_16px_40px_rgba(60,50,35,0.08),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-xl transition-all duration-300`
         }
-        style={box}
+        style={{
+          left: box.left,
+          top: box.top,
+          width: box.width,
+          height: box.height,
+        }}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       >
