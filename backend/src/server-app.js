@@ -9,6 +9,8 @@ import blogRoutes from './routes/blog.js';
 import uploadRoutes from './routes/uploads.js';
 import youtubeRoutes from './routes/youtube.js';
 import cronRoutes from './routes/cron.js';
+import communityRoutes from './routes/community.js';
+import adminRoutes from './routes/admin.js';
 
 const app = express();
 
@@ -34,6 +36,8 @@ app.use('/api/blog', blogRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/youtube', youtubeRoutes);
 app.use('/api/cron', cronRoutes);
+app.use('/api/community', communityRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api', apiRoutes);
 
 // eslint-disable-next-line no-unused-vars

@@ -8,6 +8,7 @@ import cron from 'node-cron';
 import app from './server-app.js';
 import { syncAll } from './services/syncService.js';
 import { fetchAllNews } from './services/newsService.js';
+import { communityRollup } from './services/communityService.js';
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => console.log(`Backend listening on http://localhost:${port}`));
@@ -32,6 +33,16 @@ cron.schedule('0 2 * * *', async () => {
     console.log(`[cron] youtube sync ok: ${r.totalVideos} videos + ${r.totalShorts} shorts`);
   } catch (err) {
     console.error('[cron] youtube sync failed:', err.message);
+  }
+});
+
+// Community weekly rollup: close expired polls + snapshot tool-usage ranks (Mon 00:10)
+cron.schedule('10 0 * * 1', async () => {
+  try {
+    const r = await communityRollup();
+    console.log(`[cron] community-rollup ok: ${r.pollsClosed} polls closed, ${r.toolsRolledUp} tools`);
+  } catch (err) {
+    console.error('[cron] community-rollup failed:', err.message);
   }
 });
 

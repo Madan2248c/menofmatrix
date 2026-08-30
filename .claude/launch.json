@@ -17,7 +17,8 @@
       "name": "menofmatrix_fe",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "menofmatrix_fe", "run", "dev"],
-      "port": 3000
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }

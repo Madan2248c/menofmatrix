@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Poppins } from "next/font/google";
 import { HiOutlineSparkles, HiOutlineArrowRight } from "react-icons/hi2";
+import LlmUsageWidget from "@/components/LlmUsageWidget";
+import AuthButton from "@/components/AuthButton";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
@@ -11,6 +13,11 @@ export default function Home() {
       <div className="pointer-events-none absolute -top-32 left-1/4 h-96 w-96 rounded-full bg-pink-400/15 blur-[120px]" />
       <div className="pointer-events-none absolute top-1/2 right-1/4 h-96 w-96 rounded-full bg-rose-400/10 blur-[120px]" />
       <div className="pointer-events-none absolute -bottom-32 left-1/3 h-96 w-96 rounded-full bg-amber-400/12 blur-[120px]" />
+
+      {/* LLM Usage Widget — floating top-right */}
+      <div className="absolute right-4 top-4 z-50 max-h-[calc(100dvh-2rem)] overflow-auto md:right-6 md:top-6">
+        <LlmUsageWidget />
+      </div>
 
       {/* Centered Glassmorphic Announcement Card */}
       <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col items-center overflow-hidden rounded-3xl border border-white/80 bg-white/80 p-8 text-center shadow-[0_20px_50px_rgba(60,50,35,0.08),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-2xl">
@@ -35,8 +42,13 @@ export default function Home() {
           Something extraordinary is in the works. The full platform experience will be soon released.
         </p>
 
+        {/* Google sign-in */}
+        <div className="mt-6">
+          <AuthButton />
+        </div>
+
         {/* CTA Button to Social page */}
-        <div className="mt-6 flex flex-col sm:flex-row items-center gap-3">
+        <div className="mt-4 flex flex-col sm:flex-row items-center gap-3">
           <Link
             href="/social"
             className="group flex items-center gap-2 rounded-full bg-neutral-900 px-5 py-2.5 text-xs font-semibold text-white shadow-md transition-all hover:bg-neutral-800 hover:shadow-lg active:scale-95"

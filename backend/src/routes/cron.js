@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { syncAll } from '../services/syncService.js';
 import { fetchAllNews } from '../services/newsService.js';
 import { runAutomation } from '../services/automationService.js';
+import { communityRollup } from '../services/communityService.js';
 
 const router = Router();
 
@@ -45,6 +46,18 @@ router.all('/sync', requireCronSecret, async (_req, res) => {
     res.json({ ok: true, ...result, youtube, automation });
   } catch (err) {
     console.error('[cron] sync failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Triggered weekly by an external scheduler (close expired polls, roll up tool usage)
+router.all('/community-rollup', requireCronSecret, async (_req, res) => {
+  try {
+    const result = await communityRollup();
+    console.log(`[cron] community-rollup ok: ${result.pollsClosed} polls closed`);
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error('[cron] community-rollup failed:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

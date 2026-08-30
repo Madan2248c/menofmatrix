@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import LlmUsageWidget from "@/components/LlmUsageWidget";
+import { Caveat, Montserrat } from "next/font/google";
+import SocialFab from "@/components/SocialFab";
+import FluidButton from "@/components/FluidButton";
+
+const caveat = Caveat({ subsets: ["latin"], weight: ["600", "700"] });
+const montserrat = Montserrat({ subsets: ["latin"], weight: ["500", "600"] });
 
 export default function FeedPage() {
   const [size, setSize] = useState({ w: 1440, h: 900 });
@@ -92,9 +97,53 @@ export default function FeedPage() {
         <path d={curveRight} fill="none" stroke="rgba(200,196,190,0.5)" strokeWidth="1.2" />
       </svg>
 
-      {/* LLM Usage Widget — floating above organic backdrop */}
-      <div className="absolute z-50 top-4 right-4 md:top-6 md:right-6 max-h-[calc(100vh-2rem)] overflow-auto">
-        <LlmUsageWidget />
+      {/* Social FAB + handwriting label + support button — top-right quadrant */}
+      <div className="absolute left-3/4 top-[20%] z-50 flex -translate-x-1/2 -translate-y-1/2 flex-col items-start gap-5">
+        <div className="flex items-center gap-5">
+          <div className="translate-y-[10px]">
+            <SocialFab fabSize={68} />
+          </div>
+          <div className={`${caveat.className} -mt-[26px] -rotate-[4deg] flex select-none flex-col text-neutral-900`}>
+            <span
+              className="mb-0.5 ml-1"
+              style={{ fontSize: "1.05rem", fontWeight: 500, letterSpacing: "0.02em", opacity: 0.75 }}
+            >
+              Meet me
+            </span>
+            <span style={{ fontSize: "2rem", fontWeight: 700, lineHeight: 1.02 }}>Lokesh</span>
+            <span style={{ fontSize: "2rem", fontWeight: 700, lineHeight: 1.02 }}>Yarramallu..!</span>
+          </div>
+        </div>
+
+        <FluidButton
+          className={`${montserrat.className} ml-[64px]`}
+          href="https://www.buymeacoffee.com/"
+          newTab
+          baseScale={0.82}
+          borderColor="#0d0d0f"
+          firstTextColor="#0d0d0f"
+          secondTextColor="#ffffff"
+          overlayColor="#0d0d0f"
+        >
+          <span
+            aria-hidden
+            className="inline-block shrink-0"
+            style={{
+              width: 17,
+              height: 17,
+              background: "currentColor",
+              WebkitMaskImage: "url(/assets/llm-token.png)",
+              maskImage: "url(/assets/llm-token.png)",
+              WebkitMaskSize: "contain",
+              maskSize: "contain",
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+              WebkitMaskPosition: "center",
+              maskPosition: "center",
+            }}
+          />
+          Buy me few tokens
+        </FluidButton>
       </div>
     </div>
   );
