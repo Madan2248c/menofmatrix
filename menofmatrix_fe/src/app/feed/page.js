@@ -8,8 +8,8 @@ import React, { useState, useEffect, useMemo } from "react";
 function generateSmoothBlob(w, h, seed = 0, lobes = 9, irregularity = 0.22) {
   const cx = w / 2;
   const cy = h / 2;
-  const rx = (w / 2) * 0.95;
-  const ry = (h / 2) * 0.95;
+  const rx = (w / 2) * 0.96;
+  const ry = (h / 2) * 0.96;
   const pts = [];
 
   for (let i = 0; i < lobes; i++) {
@@ -55,25 +55,25 @@ function PureOrganicBlob({
 
   const toneConfigs = {
     white: {
-      fill: "bg-white/95",
+      fill: "bg-white",
       borderStroke: "rgba(255, 255, 255, 0.95)",
-      innerStroke: "rgba(0, 0, 0, 0.03)",
-      shadow: "drop-shadow(0 40px 90px rgba(60,50,35,0.12)) drop-shadow(0 2px 8px rgba(0,0,0,0.03))",
+      innerStroke: "rgba(0, 0, 0, 0.02)",
+      shadow: "drop-shadow(0 40px 100px rgba(60,50,35,0.12))",
       sheen: "from-white via-white/80 to-transparent",
     },
     black: {
-      fill: "bg-neutral-950/95",
+      fill: "bg-neutral-950",
       borderStroke: "rgba(255, 255, 255, 0.22)",
       innerStroke: "rgba(255, 255, 255, 0.08)",
-      shadow: "drop-shadow(0 44px 100px rgba(0,0,0,0.5)) drop-shadow(0 6px 20px rgba(0,0,0,0.3))",
+      shadow: "drop-shadow(0 48px 110px rgba(0,0,0,0.55)) drop-shadow(0 6px 24px rgba(0,0,0,0.35))",
       sheen: "from-white/30 via-white/10 to-transparent",
     },
     smoke: {
-      fill: "bg-neutral-200/90",
-      borderStroke: "rgba(255, 255, 255, 0.9)",
-      innerStroke: "rgba(0, 0, 0, 0.05)",
-      shadow: "drop-shadow(0 36px 85px rgba(60,50,35,0.09))",
-      sheen: "from-white via-white/70 to-transparent",
+      fill: "bg-[#e5e1da]",
+      borderStroke: "rgba(255, 255, 255, 0.85)",
+      innerStroke: "rgba(0, 0, 0, 0.04)",
+      shadow: "drop-shadow(0 38px 90px rgba(60,50,35,0.1))",
+      sheen: "from-white via-white/60 to-transparent",
     },
   };
 
@@ -99,7 +99,7 @@ function PureOrganicBlob({
 
       {/* Top Specular Sheen */}
       <div
-        className={`pointer-events-none absolute inset-x-0 top-0 h-[2.5px] bg-gradient-to-r ${cfg.sheen} opacity-90`}
+        className={`pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r ${cfg.sheen} opacity-90`}
         style={{ clipPath: `path('${pathD}')` }}
       />
 
@@ -109,13 +109,13 @@ function PureOrganicBlob({
           d={pathD}
           fill="none"
           stroke={cfg.borderStroke}
-          strokeWidth="1.8"
+          strokeWidth="2"
         />
         <path
           d={pathD}
           fill="none"
           stroke={cfg.innerStroke}
-          strokeWidth="4.5"
+          strokeWidth="5"
           strokeOpacity="0.6"
           className="blur-[1px]"
         />
@@ -125,7 +125,7 @@ function PureOrganicBlob({
 }
 
 // ---------------------------------------------------------------------------
-// Main 3 Solid Space-Filling Blobs (Zero Empty Space, Zero Movement)
+// Main 3 Solid Space-Filling Blobs (100% Space Covered, Zero Gaps, Static)
 // ---------------------------------------------------------------------------
 export default function FeedPage() {
   const [viewport, setViewport] = useState({ w: 1440, h: 900 });
@@ -142,21 +142,18 @@ export default function FeedPage() {
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
-  // Generous dimensions ensuring generous overlap with 0 background gaps
-  const blob1W = Math.max(800, Math.round(viewport.w * 0.82));
-  const blob1H = Math.max(700, Math.round(viewport.h * 1.15));
+  // Extra-large dimensions ensuring 100% full screen coverage with deep overlapping boundaries
+  const blob1W = Math.max(900, Math.round(viewport.w * 1.05));
+  const blob1H = Math.max(800, Math.round(viewport.h * 1.25));
 
-  const blob2W = Math.max(750, Math.round(viewport.w * 0.78));
-  const blob2H = Math.max(650, Math.round(viewport.h * 1.05));
+  const blob2W = Math.max(850, Math.round(viewport.w * 0.95));
+  const blob2H = Math.max(750, Math.round(viewport.h * 1.15));
 
-  const blob3W = Math.max(780, Math.round(viewport.w * 0.80));
-  const blob3H = Math.max(650, Math.round(viewport.h * 0.95));
+  const blob3W = Math.max(880, Math.round(viewport.w * 0.98));
+  const blob3H = Math.max(750, Math.round(viewport.h * 1.08));
 
   return (
-    <div className="relative h-screen w-screen bg-[#f4f2ee] overflow-hidden select-none">
-      {/* Ambient Radial Atmosphere */}
-      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(ellipse_90%_90%_at_50%_-10%,rgba(235,230,220,0.9),rgba(244,242,238,1))]" />
-      
+    <div className="relative h-screen w-screen bg-white overflow-hidden select-none">
       {/* ------------------------------------------------------------------ */}
       {/* 3 Giant Static Interlocking Blobs (100% Screen Covered, 0 Dead Space) */}
       {/* ------------------------------------------------------------------ */}
@@ -167,20 +164,20 @@ export default function FeedPage() {
           height={blob1H}
           seed={3}
           lobes={9}
-          irregularity={0.22}
+          irregularity={0.2}
           tone="white"
-          className="-top-[15%] -left-[18%] z-10"
+          className="-top-[20%] -left-[20%] z-10"
         />
 
-        {/* BLOB 2: Top-Right Smoke Pod (Warm Smoke Glass) - Closes the gap */}
+        {/* BLOB 2: Top-Right Smoke Pod (Warm Smoke Glass) - Closes any gap completely */}
         <PureOrganicBlob
           width={blob2W}
           height={blob2H}
           seed={14}
           lobes={9}
-          irregularity={0.24}
+          irregularity={0.22}
           tone="smoke"
-          className="-top-[18%] -right-[15%] z-20"
+          className="-top-[22%] -right-[18%] z-20"
         />
 
         {/* BLOB 3: Bottom-Right Obsidian Void (Deep Black) */}
@@ -189,9 +186,9 @@ export default function FeedPage() {
           height={blob3H}
           seed={9}
           lobes={9}
-          irregularity={0.25}
+          irregularity={0.24}
           tone="black"
-          className="bottom-[-18%] -right-[12%] z-30"
+          className="bottom-[-22%] -right-[15%] z-30"
         />
       </div>
     </div>
