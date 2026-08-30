@@ -39,18 +39,18 @@ export default function FeedPage() {
   const curveRight = `M ${jX} ${jY} C ${0.50 * w} ${0.48 * h}, ${0.60 * w} ${0.47 * h}, ${0.72 * w} ${0.45 * h} C ${0.80 * w} ${0.44 * h}, ${0.88 * w} ${0.66 * h}, ${w} ${0.70 * h}`;
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden select-none bg-neutral-950">
+    <div className="relative h-screen w-screen overflow-hidden select-none bg-[#f4f2ee]">
       {/* ------------------------------------------------------------------ */}
       {/* Region 1: Left / Top-Left (Crisp White Glass)                       */}
       {/* ------------------------------------------------------------------ */}
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none z-10"
         style={{
-          filter: "drop-shadow(0 20px 50px rgba(60,50,35,0.08))",
+          filter: "drop-shadow(0 20px 50px rgba(0,0,0,0.45)) drop-shadow(0 4px 16px rgba(0,0,0,0.3))",
         }}
         viewBox={`0 0 ${w} ${h}`}
       >
-        <path d={pathLeftWhite} fill="#ffffff" />
+        <path d={pathLeftWhite} fill="#0d0d0f" />
       </svg>
 
       {/* ------------------------------------------------------------------ */}
@@ -72,11 +72,11 @@ export default function FeedPage() {
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none z-30"
         style={{
-          filter: "drop-shadow(0 -20px 60px rgba(0,0,0,0.45)) drop-shadow(-15px 0 35px rgba(0,0,0,0.3))",
+          filter: "drop-shadow(0 -20px 60px rgba(60,50,35,0.12)) drop-shadow(-15px 0 35px rgba(0,0,0,0.06))",
         }}
         viewBox={`0 0 ${w} ${h}`}
       >
-        <path d={pathBottomRightBlack} fill="#0d0d0f" />
+        <path d={pathBottomRightBlack} fill="#ffffff" />
       </svg>
 
       {/* ------------------------------------------------------------------ */}
