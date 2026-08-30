@@ -88,7 +88,7 @@ function Pill({ platform, data, className = "", transparent = false }) {
 
       {/* Platform Icon Badge */}
       <div
-        className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full ${meta.badgeBg} shadow-xs ring-2 ring-white/80 transition-transform duration-300 group-hover:scale-105`}
+        className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full ${meta.badgeBg} shadow-xs ring-2 ring-white/80 transition-all duration-300 group-hover:brightness-110 group-hover:shadow-md`}
       >
         {meta.icon}
       </div>
@@ -113,7 +113,7 @@ function Pill({ platform, data, className = "", transparent = false }) {
           href={profileUrl}
           target="_blank"
           rel="noreferrer"
-          className="w-24 shrink-0 rounded-full bg-neutral-900 py-1.5 text-center text-xs font-semibold text-white shadow-xs transition-all duration-200 hover:scale-[1.03] hover:bg-black hover:shadow-md active:scale-[0.98]"
+          className="w-24 shrink-0 rounded-full bg-neutral-900 py-1.5 text-center text-xs font-semibold text-white shadow-xs transition-all duration-200 hover:-translate-y-px hover:bg-black hover:shadow-md active:translate-y-0"
         >
           {meta.actionLabel}
         </a>
@@ -479,12 +479,8 @@ function TweetsBox({
       if (!dockRect || !twitterRect) return;
 
       const left = dockRect.right + BOX_GAP;
-      const width = window.innerWidth - left - BOX_MARGIN;
-      if (width < BOX_MIN_WIDTH) {
-        setBox(false);
-        return;
-      }
-
+      const rawWidth = window.innerWidth - left - BOX_MARGIN;
+      const width = Math.max(120, rawWidth);
       const top = twitterRect.top;
       const height = Math.max(dockRect.bottom - top, 0);
       setBox({ left, top, width, height });
@@ -827,12 +823,8 @@ function TopBox({
       if (!dockRect || !youtubeRect) return;
 
       const left = dockRect.right + BOX_GAP;
-      const width = window.innerWidth - left - BOX_MARGIN;
-      if (width < BOX_MIN_WIDTH) {
-        setBox(false);
-        return;
-      }
-
+      const rawWidth = window.innerWidth - left - BOX_MARGIN;
+      const width = Math.max(120, rawWidth);
       const top = BOX_MARGIN;
       const height = Math.max(youtubeRect.bottom - top, 0);
       setBox({ left, top, width, height });
@@ -1332,7 +1324,18 @@ function ConvexInstagramBackground({ layout, isHovered }) {
   const rt = 24;         // standard rounded-3xl
   const ri = 16;         // concave inner corner fillet
 
-  const pathD = `M 0 ${rt} A ${rt} ${rt} 0 0 1 ${rt} 0 L ${lw - rt} 0 A ${rt} ${rt} 0 0 1 ${lw} ${rt} L ${lw} ${pt - ri} A ${ri} ${ri} 0 0 0 ${lw + ri} ${pt} L ${gapLeft + pw - rp} ${pt} A ${rp} ${rp} 0 0 1 ${gapLeft + pw - rp} ${pt + ph} L ${lw + ri} ${pt + ph} A ${ri} ${ri} 0 0 0 ${lw} ${pt + ph + ri} L ${lw} ${lh - rt} A ${rt} ${rt} 0 0 1 ${lw - rt} ${lh} L ${rt} ${lh} A ${rt} ${rt} 0 0 1 0 ${lh - rt} Z`;
+  // C1 organic bridge calculations
+  const x1 = lw;
+  const x2 = gapLeft + 6;
+  const xMid = (lw + gapLeft) / 2;
+  const dip = 12;
+
+  const w1 = (xMid - x1) * 0.5;
+  const w2 = (x2 - xMid) * 0.5;
+  const yMidTop = pt + dip;
+  const yMidBot = pt + ph - dip;
+
+  const pathD = `M 0 ${rt} A ${rt} ${rt} 0 0 1 ${rt} 0 L ${lw - rt} 0 A ${rt} ${rt} 0 0 1 ${lw} ${rt} L ${lw} ${pt - ri} C ${lw} ${pt - ri + 8}, ${xMid - w1} ${yMidTop}, ${xMid} ${yMidTop} C ${xMid + w2} ${yMidTop}, ${x2 - 8} ${pt}, ${x2} ${pt} L ${gapLeft + pw - rp} ${pt} A ${rp} ${rp} 0 0 1 ${gapLeft + pw - rp} ${pt + ph} L ${x2} ${pt + ph} C ${x2 - 8} ${pt + ph}, ${xMid + w2} ${yMidBot}, ${xMid} ${yMidBot} C ${xMid - w1} ${yMidBot}, ${lw} ${pt + ph + ri - 8}, ${lw} ${pt + ph + ri} L ${lw} ${lh - rt} A ${rt} ${rt} 0 0 1 ${lw - rt} ${lh} L ${rt} ${lh} A ${rt} ${rt} 0 0 1 0 ${lh - rt} Z`;
 
   return (
     <div
@@ -1382,24 +1385,44 @@ function ConvexYoutubeBackground({ layout, isHovered }) {
   const ph = pill.height;
   const tw = tbBox.width;
   const th = tbBox.height;
-  const gapLeft = tbBox.left - pill.left;
-  const pt = th - ph; // bottom aligned
 
   // Radii
   const rp = ph / 2;     // Pill-shaped left end
   const rt = 24;         // standard rounded-3xl
   const ri = 16;         // concave inner corner fillet
 
-  const pathD = `M ${gapLeft + rt} 0 L ${gapLeft + tw - rt} 0 A ${rt} ${rt} 0 0 1 ${gapLeft + tw} ${rt} L ${gapLeft + tw} ${th - rt} A ${rt} ${rt} 0 0 1 ${gapLeft + tw - rt} ${th} L ${rp} ${th} A ${rp} ${rp} 0 0 1 ${rp} ${pt} L ${gapLeft - ri} ${pt} A ${ri} ${ri} 0 0 0 ${gapLeft} ${pt - ri} L ${gapLeft} ${rt} A ${rt} ${rt} 0 0 1 ${gapLeft + rt} 0 Z`;
+  // Dynamic vertical baseline alignment coordinates inside SVG
+  const svgTop = Math.min(pill.top, tbBox.top);
+  const svgHeight = Math.max(pill.top + ph, tbBox.top + th) - svgTop;
+
+  const pTop = pill.top - svgTop;
+  const pBottom = pTop + ph;
+  const tTop = tbBox.top - svgTop;
+  const tBottom = tTop + th;
+  const tLeft = tbBox.left - pill.left;
+
+  // Organic C1 continuous bridge calculations
+  const x1 = pw - 6;
+  const x2 = tLeft + rt;
+  const xMid = (pw + tLeft) / 2;
+  const dip = 12;
+
+  const w1 = (xMid - x1) * 0.5;
+  const w2 = (x2 - xMid) * 0.5;
+
+  const yMidTop = pTop + dip;
+  const yMidBot = pBottom - dip;
+
+  const pathD = `M ${tLeft + rt} ${tTop} L ${tLeft + tw - rt} ${tTop} A ${rt} ${rt} 0 0 1 ${tLeft + tw} ${tTop + rt} L ${tLeft + tw} ${tBottom - rt} A ${rt} ${rt} 0 0 1 ${tLeft + tw - rt} ${tBottom} L ${x2} ${tBottom} C ${x2 - 8} ${tBottom}, ${xMid + w2} ${yMidBot}, ${xMid} ${yMidBot} C ${xMid - w1} ${yMidBot}, ${x1 + 8} ${pBottom}, ${x1} ${pBottom} L ${rp} ${pBottom} A ${rp} ${rp} 0 0 1 ${rp} ${pTop} L ${x1} ${pTop} C ${x1 + 8} ${pTop}, ${xMid - w1} ${yMidTop}, ${xMid} ${yMidTop} C ${xMid + w2} ${yMidTop}, ${tLeft} ${pTop - ri + 8}, ${tLeft} ${pTop - ri} L ${tLeft} ${tTop + rt} A ${rt} ${rt} 0 0 1 ${tLeft + rt} ${tTop} Z`;
 
   return (
     <div
       className="fixed pointer-events-none z-0"
       style={{
         left: pill.left,
-        top: tbBox.top,
+        top: svgTop,
         width: tbBox.left + tw - pill.left,
-        height: th,
+        height: svgHeight,
         filter: isHovered
           ? "drop-shadow(0 20px 48px rgba(255,0,0,0.16)) drop-shadow(0 1px 3px rgba(0,0,0,0.04))"
           : "drop-shadow(0 16px 40px rgba(60,50,35,0.08)) drop-shadow(0 1px 3px rgba(0,0,0,0.03))",
@@ -1440,23 +1463,46 @@ function ConvexTwitterBackground({ layout, isHovered }) {
   const ph = pill.height;
   const tw = tweets.width;
   const th = tweets.height;
-  const gapLeft = tweets.left - pill.left;
 
   // Radii
   const rp = ph / 2;     // Pill-shaped left end
   const rt = 24;         // standard rounded-3xl
   const ri = 16;         // concave inner corner fillet
 
-  const pathD = `M ${rp} 0 L ${gapLeft + tw - rt} 0 A ${rt} ${rt} 0 0 1 ${gapLeft + tw} ${rt} L ${gapLeft + tw} ${th - rt} A ${rt} ${rt} 0 0 1 ${gapLeft + tw - rt} ${th} L ${gapLeft + rt} ${th} A ${rt} ${rt} 0 0 1 ${gapLeft} ${th - rt} L ${gapLeft} ${ph + ri} A ${ri} ${ri} 0 0 0 ${gapLeft - ri} ${ph} L ${rp} ${ph} A ${rp} ${rp} 0 0 1 0 ${rp} A ${rp} ${rp} 0 0 1 ${rp} 0 Z`;
+  // Dynamic vertical baseline alignment coordinates inside SVG
+  const svgTop = Math.min(pill.top, tweets.top);
+  const svgHeight = Math.max(pill.top + ph, tweets.top + th) - svgTop;
+
+  const pTop = pill.top - svgTop;
+  const pBottom = pTop + ph;
+  const tTop = tweets.top - svgTop;
+  const tBottom = tTop + th;
+  const tLeft = tweets.left - pill.left;
+
+  // Organic C1 continuous bridge calculations
+  const x1 = pw - 6;
+  const x2 = tLeft + rt;
+  const xMid = (pw + tLeft) / 2;
+  const dip = 12;
+
+  const w1 = (xMid - x1) * 0.5;
+  const w2 = (x2 - xMid) * 0.5;
+
+  const yMidTop = pTop + dip;
+  const yMidBot = pBottom - dip;
+  const wBot1 = (xMid - x1) * 0.5;
+  const hBotWall = (pBottom + ri - yMidBot) * 0.5;
+
+  const pathD = `M ${rp} ${pTop} L ${x1} ${pTop} C ${x1 + w1} ${pTop}, ${xMid - w1} ${yMidTop}, ${xMid} ${yMidTop} C ${xMid + w2} ${yMidTop}, ${x2 - w2} ${tTop}, ${x2} ${tTop} L ${tLeft + tw - rt} ${tTop} A ${rt} ${rt} 0 0 1 ${tLeft + tw} ${tTop + rt} L ${tLeft + tw} ${tBottom - rt} A ${rt} ${rt} 0 0 1 ${tLeft + tw - rt} ${tBottom} L ${tLeft + rt} ${tBottom} A ${rt} ${rt} 0 0 1 ${tLeft} ${tBottom - rt} L ${tLeft} ${pBottom + ri} C ${tLeft} ${pBottom + ri - hBotWall}, ${xMid + (tLeft - xMid) * 0.5} ${yMidBot}, ${xMid} ${yMidBot} C ${xMid - wBot1} ${yMidBot}, ${x1 + wBot1} ${pBottom}, ${x1} ${pBottom} L ${rp} ${pBottom} A ${rp} ${rp} 0 0 1 ${rp} ${pTop} Z`;
 
   return (
     <div
       className="fixed pointer-events-none z-0"
       style={{
         left: pill.left,
-        top: pill.top,
+        top: svgTop,
         width: tweets.left + tw - pill.left,
-        height: Math.max(ph, th),
+        height: svgHeight,
         filter: isHovered
           ? "drop-shadow(0 20px 48px rgba(0,0,0,0.14)) drop-shadow(0 1px 3px rgba(0,0,0,0.04))"
           : "drop-shadow(0 16px 40px rgba(60,50,35,0.08)) drop-shadow(0 1px 3px rgba(0,0,0,0.03))",
@@ -1583,9 +1629,22 @@ export default function Social() {
 
     const t = setTimeout(measure, 150);
     window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, { passive: true });
+    window.visualViewport?.addEventListener("resize", measure);
+    window.visualViewport?.addEventListener("scroll", measure);
+
+    const observer = new ResizeObserver(() => {
+      measure();
+    });
+    if (document.body) observer.observe(document.body);
+
     return () => {
       clearTimeout(t);
       window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure);
+      window.visualViewport?.removeEventListener("resize", measure);
+      window.visualViewport?.removeEventListener("scroll", measure);
+      observer.disconnect();
     };
   }, [isLoaded, data, tweets.length, videos.length]);
 

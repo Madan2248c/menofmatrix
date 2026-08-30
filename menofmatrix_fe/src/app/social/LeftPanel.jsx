@@ -346,7 +346,7 @@ function InstagramPostCard({ post, actualIdx, cellIdx, isFlipping, count }) {
         style={{
           transform: isFlipping
             ? "rotateY(90deg)"
-            : `scale(${tilt.x !== 0 || tilt.y !== 0 ? 1.05 : 1}) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
+            : `scale(${tilt.x !== 0 || tilt.y !== 0 ? 1.02 : 1}) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`,
           transformStyle: "preserve-3d",
           backfaceVisibility: "hidden",
         }}
@@ -443,7 +443,7 @@ export function MiniPostsGrid({ posts = [], gridRef }) {
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
-        <div className="grid grid-cols-2 gap-2 p-1 bg-transparent">
+        <div className="grid grid-cols-2 gap-2 p-2 bg-transparent">
           {cellPostIndices.map((postIdx, cellIdx) => {
             const actualIdx = postIdx % count;
             return (
@@ -622,11 +622,12 @@ function FollowerBubbles({ followers, containerRef, obstacleRefs, box }) {
       const obstacles = measureObstacles();
       obstaclesRef.current = obstacles;
 
+      const BUBBLE_INSET = 24;
       physicsRef.current = slots.map((b) => {
         let x, y, tries = 0;
         do {
-          x = b.r + Math.random() * (box.width - b.r * 2);
-          y = b.r + Math.random() * (box.height - b.r * 2);
+          x = BUBBLE_INSET + b.r + Math.random() * Math.max(10, box.width - BUBBLE_INSET * 2 - b.r * 2);
+          y = BUBBLE_INSET + b.r + Math.random() * Math.max(10, box.height - BUBBLE_INSET * 2 - b.r * 2);
           tries++;
         } while (overlapsObstacle(x, y, b.r, obstacles) && tries < 100);
         const angle = Math.random() * Math.PI * 2;
@@ -701,11 +702,12 @@ function FollowerBubbles({ followers, containerRef, obstacleRefs, box }) {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
 
-        // Wall bounds
-        if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx); }
-        if (b.x + b.r > box.width) { b.x = box.width - b.r; b.vx = -Math.abs(b.vx); }
-        if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy); }
-        if (b.y + b.r > box.height) { b.y = box.height - b.r; b.vy = -Math.abs(b.vy); }
+        // Wall bounds — 24px inset from outer container edges so bubbles never touch borders
+        const WALL = 24;
+        if (b.x - b.r < WALL) { b.x = WALL + b.r; b.vx = Math.abs(b.vx); }
+        if (b.x + b.r > box.width - WALL) { b.x = box.width - WALL - b.r; b.vx = -Math.abs(b.vx); }
+        if (b.y - b.r < WALL) { b.y = WALL + b.r; b.vy = Math.abs(b.vy); }
+        if (b.y + b.r > box.height - WALL) { b.y = box.height - WALL - b.r; b.vy = -Math.abs(b.vy); }
 
         // Hard obstacle avoidance — strictly push bubbles outside card boundaries
         for (const o of obstacles) {
@@ -921,11 +923,7 @@ export default function LeftPanel({
       if (!dockRect) return;
       const right = dockRect.left - BOX_GAP;
       const left = BOX_MARGIN;
-      const width = right - left;
-      if (width < BOX_MIN_WIDTH) {
-        setBox(false);
-        return;
-      }
+      const width = Math.max(120, right - left);
       const top = BOX_MARGIN;
       const height = Math.max(dockRect.bottom - top, 0);
       setBox({ left, top, width, height });
@@ -1025,8 +1023,8 @@ export default function LeftPanel({
         ref={resolvedRef}
         className={
           transparent
-            ? `${poppins.className} fixed overflow-hidden transition-all duration-300 bg-transparent border-none shadow-none backdrop-blur-none`
-            : `${poppins.className} fixed overflow-hidden rounded-3xl border border-white/80 bg-white/90 shadow-[0_16px_40px_rgba(60,50,35,0.08),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-xl transition-all duration-300`
+            ? `${poppins.className} fixed transition-all duration-300 bg-transparent border-none shadow-none backdrop-blur-none`
+            : `${poppins.className} fixed transition-all duration-300`
         }
         style={{
           left: box.left,
@@ -1037,8 +1035,12 @@ export default function LeftPanel({
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       >
+        {/* Visual card background — separate from layout container so hover animations never get clipped */}
         {!transparent && (
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
+          <div className="pointer-events-none absolute inset-0 rounded-3xl border border-white/80 bg-white/90 shadow-[0_16px_40px_rgba(60,50,35,0.08),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-xl" />
+        )}
+        {!transparent && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] rounded-t-3xl bg-gradient-to-r from-transparent via-white to-transparent opacity-80" />
         )}
         <FollowerBubbles
           followers={followers}
