@@ -906,7 +906,6 @@ function DepthAvatar({ followers, seed, intervalMs }) {
 
   useEffect(() => {
     if (count === 0) return;
-    setIdx(seed % count);
     const t = setInterval(() => {
       setIdx((i) => (i + 1 + (seed % 3)) % count);
     }, intervalMs);
@@ -984,7 +983,6 @@ function TickingCount({ value }) {
     const dur = 1400;
     let raf;
     let start;
-    setDisplay(from);
     function step(now) {
       if (start == null) start = now;
       const t = Math.min((now - start) / dur, 1);
