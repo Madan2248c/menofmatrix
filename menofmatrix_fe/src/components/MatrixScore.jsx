@@ -20,25 +20,6 @@ const METRICS = [
 ];
 const SCORE = METRICS.reduce((a, m) => a + m.pts, 0); // 742
 
-/* the "M" as a dot matrix — 10 cols x 8 rows */
-const M_ROWS = [
-  [0, 1, 8, 9],
-  [0, 1, 2, 7, 8, 9],
-  [0, 1, 2, 3, 6, 7, 8, 9],
-  [0, 1, 3, 4, 5, 8, 9],
-  [0, 1, 4, 8, 9],
-  [0, 1, 8, 9],
-  [0, 1, 8, 9],
-  [0, 1, 8, 9],
-];
-const M_DOTS = [];
-M_ROWS.forEach((cols, row) => cols.forEach((col) => M_DOTS.push({ row, col })));
-// light order: bottom rows first, then left-to-right — the M "charges up"
-const FILL_RANK = new Map();
-[...M_DOTS]
-  .sort((a, b) => b.row - a.row || a.col - b.col)
-  .forEach((d, k) => FILL_RANK.set(`${d.row}-${d.col}`, k));
-
 function useCountUp(target, { duration = 1200, run = true } = {}) {
   const [n, setN] = useState(run ? 0 : target);
   useEffect(() => {
@@ -57,44 +38,89 @@ function useCountUp(target, { duration = 1200, run = true } = {}) {
   return n;
 }
 
-function DotM({ pct, spacing = 20, r = 6, run = true }) {
-  const lit = Math.round(pct * M_DOTS.length);
-  const w = spacing * 9 + r * 2;
-  const h = spacing * 7 + r * 2;
+/* The Men of Matrix mark (its own dot-art "M") with an orange level
+   rising through it up to the score. */
+let DOT_CACHE = null;
+
+function useMarkDots() {
+  const [dots, setDots] = useState(DOT_CACHE);
+  useEffect(() => {
+    if (DOT_CACHE) return;
+    let alive = true;
+    fetch("/brand/menofmatrix-mark.svg")
+      .then((r) => r.text())
+      .then((txt) => {
+        const doc = new DOMParser().parseFromString(txt, "image/svg+xml");
+        const cs = [...doc.querySelectorAll("circle")].map((c) => ({
+          cx: +c.getAttribute("cx"),
+          cy: +c.getAttribute("cy"),
+          r: +c.getAttribute("r"),
+        }));
+        DOT_CACHE = cs;
+        if (alive) setDots(cs);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return dots;
+}
+
+function BrandM({ pct, size = 168, run = true }) {
+  const dots = useMarkDots();
+  const clipId = `mRise-${size}`;
+
+  if (!dots) return <div style={{ width: size, height: size }} />;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const d of dots) {
+    minX = Math.min(minX, d.cx - d.r);
+    minY = Math.min(minY, d.cy - d.r);
+    maxX = Math.max(maxX, d.cx + d.r);
+    maxY = Math.max(maxY, d.cy + d.r);
+  }
+  const pad = 10;
+  const vb = `${minX - pad} ${minY - pad} ${maxX - minX + pad * 2} ${
+    maxY - minY + pad * 2
+  }`;
+  const fillLine = maxY - pct * (maxY - minY);
+
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: w, height: h }}>
+    <svg viewBox={vb} style={{ width: size, height: size, overflow: "visible" }}>
       <defs>
-        <radialGradient id="mDot" cx="34%" cy="30%">
-          <stop offset="0" stopColor="#fdba74" />
-          <stop offset="1" stopColor="#ea580c" />
-        </radialGradient>
-      </defs>
-      {M_DOTS.map((d) => {
-        const k = FILL_RANK.get(`${d.row}-${d.col}`);
-        const isLit = k < lit;
-        return (
-          <motion.circle
-            key={`${d.row}-${d.col}`}
-            cx={r + d.col * spacing}
-            cy={r + d.row * spacing}
-            r={r}
-            fill={isLit ? "url(#mDot)" : "rgba(10,10,10,0.1)"}
-            initial={run ? { opacity: 0, scale: 0.3 } : false}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{
-              delay: run ? 0.12 + k * 0.02 : 0,
-              type: "spring",
-              stiffness: 300,
-              damping: 20,
-            }}
-            style={{
-              filter: isLit
-                ? "drop-shadow(0 0 2.5px rgba(234,88,12,0.4))"
-                : "none",
-            }}
+        <linearGradient id="mFill" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stopColor="#ea580c" />
+          <stop offset="1" stopColor="#fdba74" />
+        </linearGradient>
+        <clipPath id={clipId}>
+          <motion.rect
+            x={minX - pad}
+            width={maxX - minX + pad * 2}
+            height={maxY - minY + pad * 2}
+            initial={run ? { y: maxY + pad } : false}
+            animate={{ y: fillLine }}
+            transition={{ ...MORPH, delay: 0.15 }}
           />
-        );
-      })}
+        </clipPath>
+      </defs>
+
+      {/* ghost mark */}
+      <g fill="rgba(10,10,10,0.14)">
+        {dots.map((d, i) => (
+          <circle key={i} cx={d.cx} cy={d.cy} r={d.r} />
+        ))}
+      </g>
+      {/* orange level */}
+      <g
+        clipPath={`url(#${clipId})`}
+        fill="url(#mFill)"
+        style={{ filter: "drop-shadow(0 0 2px rgba(234,88,12,0.4))" }}
+      >
+        {dots.map((d, i) => (
+          <circle key={i} cx={d.cx} cy={d.cy} r={d.r * 1.12} />
+        ))}
+      </g>
     </svg>
   );
 }
@@ -105,14 +131,14 @@ function ScorePanel() {
   const pct = SCORE / GOAL;
   return (
     <div className={`${poppins.className} flex w-full max-w-[340px] flex-col items-center`}>
-      <span className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-900">
+      <span className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-900">
         Matrix Score
       </span>
 
-      <DotM pct={pct} spacing={15} r={4.5} run />
+      <BrandM pct={pct} size={112} run />
 
-      <div className="mt-3 flex items-baseline gap-1.5">
-        <span className="text-[30px] font-semibold leading-none tabular-nums text-neutral-900">
+      <div className="mt-2 flex items-baseline gap-1.5">
+        <span className="text-[28px] font-semibold leading-none tabular-nums text-neutral-900">
           {n}
         </span>
         <span className="text-[10px] font-medium text-neutral-400">/ {GOAL}</span>
@@ -161,38 +187,36 @@ export default function MatrixScore() {
           whileHover={{ y: -2 }}
           transition={MORPH}
         >
-          <span className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+          <span className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
             Matrix Score
           </span>
 
-          <div className="relative flex flex-col items-center">
+          <div className="relative">
             <span
               aria-hidden
-              className="pointer-events-none absolute -inset-8 -z-10 rounded-full"
+              className="pointer-events-none absolute -inset-5 -z-10 rounded-full"
               style={{
                 background:
-                  "radial-gradient(circle, rgba(251,146,60,0.26), transparent 70%)",
+                  "radial-gradient(circle, rgba(251,146,60,0.24), transparent 70%)",
               }}
             />
             <motion.div
               animate={{ scale: [1, 1.02, 1] }}
               transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut" }}
             >
-              <DotM pct={pct} spacing={22} r={6.5} run />
+              <BrandM pct={pct} size={188} run />
             </motion.div>
-
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-[38px] font-semibold leading-none tabular-nums text-neutral-900">
-                {n}
-              </span>
-              <span className="text-[11px] font-medium text-neutral-400">
-                / {GOAL}
-              </span>
-            </div>
-            <span className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-orange-600">
-              <TrendingUp className="h-3 w-3" strokeWidth={3} />+{DELTA}% this week
-            </span>
           </div>
+
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-[40px] font-semibold leading-none tabular-nums text-neutral-900">
+              {n}
+            </span>
+            <span className="text-[11px] font-medium text-neutral-400">/ {GOAL}</span>
+          </div>
+          <span className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-orange-600">
+            <TrendingUp className="h-3 w-3" strokeWidth={3} />+{DELTA}% this week
+          </span>
 
           <span className="mt-2 text-[9.5px] font-medium text-neutral-400 opacity-0 transition-opacity group-hover:opacity-100">
             tap for the breakdown
