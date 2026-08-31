@@ -33,26 +33,27 @@ export default function AuthButton({ className = "" }) {
   }
 
   if (session?.user) {
+    const label = session.user.name || session.user.email || "";
     return (
-      <div className={`inline-flex items-center gap-2.5 ${className}`}>
-        {session.user.image && (
+      <button
+        type="button"
+        onClick={() => signOut()}
+        title="Sign out"
+        className={`inline-flex items-center gap-2.5 rounded-full border border-neutral-200 bg-white/90 py-1.5 pl-4 pr-1.5 text-sm shadow-sm backdrop-blur-md transition-all hover:border-neutral-300 hover:shadow-md active:scale-95 ${className}`}
+      >
+        <span className="max-w-[10rem] truncate font-medium text-neutral-800">{label}</span>
+        {session.user.image ? (
           <img
             src={session.user.image}
             alt=""
             className="h-8 w-8 rounded-full object-cover ring-1 ring-black/10"
           />
+        ) : (
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-900 text-xs font-bold text-white">
+            {label.charAt(0).toUpperCase() || "?"}
+          </span>
         )}
-        <span className="text-sm font-medium text-neutral-800">
-          {session.user.name || session.user.email}
-        </span>
-        <button
-          type="button"
-          onClick={() => signOut()}
-          className="rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-semibold text-neutral-600 transition-colors hover:bg-neutral-200 hover:text-neutral-900"
-        >
-          Sign out
-        </button>
-      </div>
+      </button>
     );
   }
 

@@ -13,6 +13,7 @@ import {
 import { Tweet, useTweet } from "react-tweet";
 import "react-tweet/theme.css";
 import LeftPanel, { StoryDeck, PostDeck, StoryCircle, StoryModal } from "./LeftPanel";
+import MeetLokesh from "@/components/MeetLokesh";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600"] });
 
@@ -972,6 +973,8 @@ function MobileBentoFeed({ data, stories, posts, followers, isLoading, onOpenTwe
         </p>
       </div>
 
+      <MeetLokesh className="my-1" />
+
       {/* Main Channel Badges */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-center gap-3">
         {!isLoading && data ? (
@@ -1657,6 +1660,7 @@ export default function Social() {
         {convexLayout && (
           <ConvexTwitterBackground layout={convexLayout} isHovered={isTwitterHovered} />
         )}
+        <MeetLokesh className="mb-4" />
         <div className="flex flex-col gap-4" style={{ zoom: 0.8 }}>
           {isLoaded && data ? (
             <>

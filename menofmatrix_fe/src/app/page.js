@@ -1,64 +1,68 @@
-import Link from "next/link";
 import { Poppins } from "next/font/google";
-import { HiOutlineSparkles, HiOutlineArrowRight } from "react-icons/hi2";
-import LlmUsageWidget from "@/components/LlmUsageWidget";
-import AuthButton from "@/components/AuthButton";
+import MotionProvider from "@/components/MotionProvider";
+import EyeFollowAuth from "@/components/EyeFollowAuth";
+import FramerEmbed from "@/components/FramerEmbed";
+import PollCarousel from "@/components/PollCarousel";
+import IdeaBoard from "@/components/IdeaBoard";
+import IdeaChip from "@/components/IdeaChip";
+import FeaturePopout from "@/components/FeaturePopout";
+import WeeklyChallengePendant from "@/components/WeeklyChallengePendant";
+import MatrixScore from "@/components/MatrixScore";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
+const DOT_GRID_URL =
+  "https://framer.com/m/Dot-Grid-BG-GVxaLr.js@mfNBQfaPK0E7CX1epbhh";
+
+// Black-on-white (the source is white-on-black).
+const DOT_GRID_PROPS = {
+  dotColor: "#111111",
+  dotSize: 2,
+  dotSpacing: 18,
+  enableRevolve: true,
+  orbitSpeed: 1.2,
+  impactRadius: 120,
+  scaleOnHover: 1.8,
+};
+
 export default function Home() {
   return (
-    <div className={`${poppins.className} relative flex min-h-dvh w-full flex-col items-center justify-center overflow-hidden bg-white/70 px-4`}>
-      {/* Ambient background glow spheres */}
-      <div className="pointer-events-none absolute -top-32 left-1/4 h-96 w-96 rounded-full bg-pink-400/15 blur-[120px]" />
-      <div className="pointer-events-none absolute top-1/2 right-1/4 h-96 w-96 rounded-full bg-rose-400/10 blur-[120px]" />
-      <div className="pointer-events-none absolute -bottom-32 left-1/3 h-96 w-96 rounded-full bg-amber-400/12 blur-[120px]" />
+    <MotionProvider>
+    <div className={`${poppins.className} relative min-h-dvh w-full overflow-hidden bg-white`}>
+      {/* Dot-grid background (Framer component) */}
+      <FramerEmbed url={DOT_GRID_URL} props={DOT_GRID_PROPS} className="fixed inset-0 z-0" />
 
-      {/* LLM Usage Widget — floating top-right */}
-      <div className="absolute right-4 top-4 z-50 max-h-[calc(100dvh-2rem)] overflow-auto md:right-6 md:top-6">
-        <LlmUsageWidget />
+      {/* Attached to the top edge, centered: auth */}
+      <div className="pointer-events-none fixed left-1/2 top-0 z-20 -translate-x-1/2">
+        <div className="pointer-events-auto">
+          <EyeFollowAuth />
+        </div>
       </div>
 
-      {/* Centered Glassmorphic Announcement Card */}
-      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-col items-center overflow-hidden rounded-3xl border border-white/80 bg-white/80 p-8 text-center shadow-[0_20px_50px_rgba(60,50,35,0.08),0_1px_3px_rgba(0,0,0,0.03)] backdrop-blur-2xl">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent opacity-90" />
-        
-        {/* Status Pill */}
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-neutral-200/70 bg-white/90 px-3.5 py-1.5 shadow-xs backdrop-blur-md">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500" />
-          </span>
-          <span className="text-[11px] font-semibold tracking-wider uppercase text-neutral-600">
-            Coming Soon
-          </span>
+      {/* Idea board launcher + weekly challenge pendant — top of the left third */}
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex w-1/3 items-start justify-center px-4 pt-16">
+        <div className="pointer-events-auto flex flex-col items-center">
+          <FeaturePopout label="Idea Board" trigger={<IdeaChip />}>
+            <IdeaBoard />
+          </FeaturePopout>
+          <WeeklyChallengePendant />
         </div>
+      </div>
 
-        {/* Headline */}
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">
-          MenOfMatrix
-        </h1>
-        <p className="mt-2 text-sm text-neutral-500 leading-relaxed max-w-sm">
-          Something extraordinary is in the works. The full platform experience will be soon released.
-        </p>
-
-        {/* Google sign-in */}
-        <div className="mt-6">
-          <AuthButton />
+      {/* Matrix Score — canvas centerpiece */}
+      <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+        <div className="pointer-events-auto">
+          <MatrixScore />
         </div>
+      </div>
 
-        {/* CTA Button to Social page */}
-        <div className="mt-4 flex flex-col sm:flex-row items-center gap-3">
-          <Link
-            href="/social"
-            className="group flex items-center gap-2 rounded-full bg-neutral-900 px-5 py-2.5 text-xs font-semibold text-white shadow-md transition-all hover:bg-neutral-800 hover:shadow-lg active:scale-95"
-          >
-            <HiOutlineSparkles className="h-4 w-4 text-amber-400 transition-transform group-hover:rotate-12" />
-            <span>Explore Social Collective</span>
-            <HiOutlineArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-          </Link>
+      {/* Rotating live polls — centered within the right third of the screen */}
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 flex w-1/3 items-center justify-center px-4">
+        <div className="pointer-events-auto" style={{ zoom: 0.62 }}>
+          <PollCarousel />
         </div>
       </div>
     </div>
+    </MotionProvider>
   );
 }
