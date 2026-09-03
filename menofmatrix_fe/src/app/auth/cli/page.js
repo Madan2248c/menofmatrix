@@ -11,27 +11,20 @@ function CliAuthContent() {
 
   const { data: session, status } = useSession();
   const [authorized, setAuthorized] = useState(false);
-  const [manualUser, setManualUser] = useState("");
-  const [manualEmail, setManualEmail] = useState("");
+
+  // A real, backend-verifiable JWT (with a `.mid` claim) minted by /api/auth/google — see
+  // src/auth.js. The CLI sends this back as `Authorization: Bearer <token>` on every sync, and
+  // the backend's requireMember middleware verifies it. There is no other path to a valid token:
+  // no self-reported handle/email is ever accepted as an identity here.
+  const hasVerifiedToken = Boolean(session?.memberToken);
 
   const handleAuthorizeSubmit = (e) => {
     e.preventDefault();
+    if (!hasVerifiedToken) return;
 
-    let userId = "";
-    let email = "";
-    let token = "";
-
-    if (session && session.user) {
-      userId = session.user.email || session.user.name || session.userId || "user";
-      email = session.user.email || "";
-      token = session.memberToken || ("tok_" + Math.random().toString(36).substring(2, 14));
-    } else if (manualUser.trim()) {
-      userId = manualUser.trim();
-      email = manualEmail.trim();
-      token = "tok_" + Math.random().toString(36).substring(2, 14);
-    } else {
-      return;
-    }
+    const userId = session.user.email || session.user.name || "user";
+    const email = session.user.email || "";
+    const token = session.memberToken;
 
     const redirectTarget = `${callbackUrl}?user_id=${encodeURIComponent(userId)}&email=${encodeURIComponent(email)}&auth_token=${encodeURIComponent(token)}&state=${encodeURIComponent(state)}`;
 
@@ -50,8 +43,8 @@ function CliAuthContent() {
   }
 
   const isLoggedIn = status === "authenticated" && session && session.user;
-  const userDisplay = isLoggedIn ? (session.user.name || session.user.email) : manualUser;
-  const emailDisplay = isLoggedIn ? session.user.email : manualEmail;
+  const userDisplay = isLoggedIn ? (session.user.name || session.user.email) : "";
+  const emailDisplay = isLoggedIn ? session.user.email : "";
 
   return (
     <div className="flex min-h-[85vh] w-full items-center justify-center px-4 py-12">
@@ -117,51 +110,24 @@ function CliAuthContent() {
               </svg>
               Sign In with Google
             </button>
-
-            <div className="relative my-1 flex items-center justify-center">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-neutral-200"></div>
-              </div>
-              <span className="relative bg-white px-2 text-[10px] uppercase tracking-wider text-neutral-400 font-bold">
-                or sign in with handle
-              </span>
+          </div>
+        ) : !hasVerifiedToken ? (
+          /* Signed into Men of Matrix, but the backend never issued a verifiable member token
+             (e.g. /api/auth/google failed). Refuse to fall back to an unverified identity. */
+          <div className="mt-6 flex flex-col gap-4">
+            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4">
+              <p className="text-xs font-bold text-red-900">⚠️ Couldn&apos;t verify your account</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-red-800">
+                We couldn&apos;t confirm your Men of Matrix membership with our servers, so we can&apos;t
+                safely connect the CLI to your account. Please sign out and try again.
+              </p>
             </div>
-
-            <form onSubmit={handleAuthorizeSubmit} className="flex flex-col gap-3">
-              <div>
-                <label className="block text-xs font-bold text-neutral-700">
-                  Community Handle / Username
-                </label>
-                <input
-                  type="text"
-                  value={manualUser}
-                  onChange={(e) => setManualUser(e.target.value)}
-                  placeholder="e.g. madan"
-                  required
-                  className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm font-medium text-neutral-900 outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-neutral-700">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={manualEmail}
-                  onChange={(e) => setManualEmail(e.target.value)}
-                  placeholder="e.g. madan@menofmatrix.com"
-                  className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm font-medium text-neutral-900 outline-none focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="mt-1 w-full rounded-xl bg-neutral-900 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-neutral-800"
-              >
-                Log In & Connect CLI
-              </button>
-            </form>
+            <button
+              onClick={() => signIn("google")}
+              className="w-full rounded-xl border border-neutral-300 bg-white py-3 text-sm font-bold text-neutral-900 shadow-sm transition hover:bg-neutral-50"
+            >
+              Retry Sign In
+            </button>
           </div>
         ) : (
           /* Step 2: User IS logged in -> Show Authorization Modal */

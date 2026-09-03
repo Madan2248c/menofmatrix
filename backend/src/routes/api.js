@@ -1,7 +1,11 @@
 import { Router } from 'express';
+import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import 'dotenv/config';
 import { query } from '../config/db.js';
 import { requireOwner } from '../middleware/requireOwner.js';
+import { requireMember } from '../middleware/communityAuth.js';
 import { listAccounts, getFirstAccountId, getAccount, deleteAccount } from '../services/tokenStore.js';
 import { fetchStories } from '../services/instagram.js';
 import { syncAll } from '../services/syncService.js';
@@ -17,6 +21,27 @@ export { requireOwner };
 // does not await route handlers, so an unguarded rejection is an unhandled
 // promise — fatal under Node's default. Wrap every async route.
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
+// Read the CLI's own version out of its Cargo.toml so /v1/tracker/config never drifts from what's shipped.
+const CLI_VERSION = (() => {
+  try {
+    const cargoPath = fileURLToPath(new URL('../../../mom-tracker/Cargo.toml', import.meta.url));
+    const match = readFileSync(cargoPath, 'utf8').match(/^version\s*=\s*"([^"]+)"/m);
+    return match?.[1] || '1.0.0';
+  } catch {
+    return '1.0.0';
+  }
+})();
+
+const trackerIngestLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => (req.member?.id ? String(req.member.id) : ipKeyGenerator(req.ip)),
+});
+
+const MAX_TRACKER_SNAPSHOTS_PER_REQUEST = 500;
 
 // ---------- Public (read-only) endpoints ----------
 
@@ -244,68 +269,100 @@ router.post('/automation/run', requireOwner, async (req, res) => {
   }
 });
 
-// Dynamic endpoint discovery for all deployed mom-tracker CLIs
+// Dynamic endpoint discovery for all deployed mom-tracker CLIs. Static payload — cache it.
 router.get('/v1/tracker/config', async (_req, res) => {
+  res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=60');
   res.json({
     ok: true,
     ingest_url: process.env.MOM_TRACKER_INGEST_URL || 'https://menofmatrix.com/api/v1/tracker',
     min_cli_version: '1.0.0',
-    current_version: '1.0.0',
+    current_version: CLI_VERSION,
     notice: null,
   });
 });
 
-router.post('/v1/tracker', async (req, res) => {
-  try {
-    const { userId, userEmail, records, clientTimestamp } = req.body || {};
-    const recordList = Array.isArray(records) ? records : [];
-    let insertedCount = 0;
+// Requires a real community JWT (Bearer token from Google sign-in via /auth/cli) so ingestion
+// can't be spoofed as another user. Identity comes from the verified token, never the body.
+router.post('/v1/tracker', requireMember, trackerIngestLimiter, wrap(async (req, res) => {
+  const { records, clientTimestamp } = req.body || {};
+  const recordList = Array.isArray(records) ? records : [];
+  // Existing rows are keyed by email (the CLI/frontend historically sent session.user.email as
+  // user_id) — keep that convention so verified ingestion doesn't fork an existing user's
+  // history under a new identity. Fall back to the member's stable numeric id only if a member
+  // somehow has no email on file.
+  const userEmail = req.member.email;
+  const userId = req.member.email || `member_${req.member.id}`;
 
-    for (const rec of recordList) {
-      const targetUserId = rec.userId || rec.user_id || userId || 'anonymous_user';
-      const snapshots = Array.isArray(rec.snapshots) ? rec.snapshots : [];
-
-      for (const s of snapshots) {
-        const agentId = s.agentId || s.agent_id;
-        const u = s.usage;
-        if (!agentId || !u) continue;
-
-        await query(
-          `INSERT INTO tracker_daily_usage (
-             user_id, user_email, agent_id, agent_name, date,
-             input_tokens, output_tokens, thinking_tokens, cached_tokens, total_tokens, client_timestamp
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-           ON CONFLICT (user_id, agent_id, date) DO UPDATE SET
-             input_tokens = EXCLUDED.input_tokens,
-             output_tokens = EXCLUDED.output_tokens,
-             thinking_tokens = EXCLUDED.thinking_tokens,
-             cached_tokens = EXCLUDED.cached_tokens,
-             total_tokens = EXCLUDED.total_tokens,
-             client_timestamp = EXCLUDED.client_timestamp,
-             recorded_at = now()`,
-          [
-            targetUserId,
-            userEmail || null,
-            agentId,
-            s.agentName || s.agent_name || agentId,
-            s.date || new Date().toISOString().split('T')[0],
-            u.input_tokens || 0,
-            u.output_tokens || 0,
-            u.thinking_tokens || 0,
-            u.cached_tokens || 0,
-            u.total_tokens || 0,
-            clientTimestamp || rec.timestamp || new Date().toISOString(),
-          ]
-        ).catch((e) => console.error('[Tracker DB Error]', e.message));
-        insertedCount++;
+  const rows = [];
+  for (const rec of recordList) {
+    const snapshots = Array.isArray(rec.snapshots) ? rec.snapshots : [];
+    for (const s of snapshots) {
+      const agentId = s.agentId || s.agent_id;
+      const u = s.usage;
+      if (!agentId || !u) continue;
+      if (rows.length >= MAX_TRACKER_SNAPSHOTS_PER_REQUEST) {
+        return res.status(400).json({
+          error: `Too many snapshots in one request (max ${MAX_TRACKER_SNAPSHOTS_PER_REQUEST})`,
+        });
       }
+      rows.push({
+        agentId,
+        agentName: s.agentName || s.agent_name || agentId,
+        date: s.date || new Date().toISOString().split('T')[0],
+        input: u.input_tokens || 0,
+        output: u.output_tokens || 0,
+        thinking: u.thinking_tokens || 0,
+        cached: u.cached_tokens || 0,
+        total: u.total_tokens || 0,
+        clientTimestamp: clientTimestamp || rec.timestamp || new Date().toISOString(),
+      });
     }
-
-    console.log(`[MOM Tracker Ingestion] Persisted ${insertedCount} snapshot(s) for user: ${userId || 'anonymous'}`);
-    res.json({ ok: true, ingested: insertedCount, timestamp: new Date().toISOString() });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
-});
+
+  if (rows.length === 0) {
+    return res.json({ ok: true, ingested: 0, timestamp: new Date().toISOString() });
+  }
+
+  // Single batched upsert via UNNEST — one round trip regardless of snapshot count.
+  // The WHERE clause makes the update monotonic: a stale/out-of-order sync can't lower
+  // a user's recorded total and flap the leaderboard.
+  const result = await query(
+    `INSERT INTO tracker_daily_usage (
+       user_id, user_email, agent_id, agent_name, date,
+       input_tokens, output_tokens, thinking_tokens, cached_tokens, total_tokens, client_timestamp
+     )
+     SELECT $1, $2, agent_id, agent_name, date::date,
+            input_tokens, output_tokens, thinking_tokens, cached_tokens, total_tokens, client_timestamp::timestamptz
+     FROM UNNEST(
+       $3::text[], $4::text[], $5::text[],
+       $6::bigint[], $7::bigint[], $8::bigint[], $9::bigint[], $10::bigint[], $11::text[]
+     ) AS t(agent_id, agent_name, date, input_tokens, output_tokens, thinking_tokens, cached_tokens, total_tokens, client_timestamp)
+     ON CONFLICT (user_id, agent_id, date) DO UPDATE SET
+       input_tokens = EXCLUDED.input_tokens,
+       output_tokens = EXCLUDED.output_tokens,
+       thinking_tokens = EXCLUDED.thinking_tokens,
+       cached_tokens = EXCLUDED.cached_tokens,
+       total_tokens = EXCLUDED.total_tokens,
+       client_timestamp = EXCLUDED.client_timestamp,
+       recorded_at = now()
+     WHERE EXCLUDED.total_tokens >= tracker_daily_usage.total_tokens`,
+    [
+      userId,
+      userEmail || null,
+      rows.map((r) => r.agentId),
+      rows.map((r) => r.agentName),
+      rows.map((r) => r.date),
+      rows.map((r) => r.input),
+      rows.map((r) => r.output),
+      rows.map((r) => r.thinking),
+      rows.map((r) => r.cached),
+      rows.map((r) => r.total),
+      rows.map((r) => r.clientTimestamp),
+    ]
+  );
+
+  console.log(`[MOM Tracker Ingestion] Persisted ${result.rowCount} snapshot(s) for user: ${userId}`);
+  res.json({ ok: true, ingested: result.rowCount, submitted: rows.length, timestamp: new Date().toISOString() });
+}));
 
 export default router;

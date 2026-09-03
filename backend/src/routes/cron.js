@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { syncAll } from '../services/syncService.js';
 import { fetchAllNews } from '../services/newsService.js';
 import { runAutomation } from '../services/automationService.js';
-import { communityRollup } from '../services/communityService.js';
+import { communityRollup, refreshTrackerRollups } from '../services/communityService.js';
 
 const router = Router();
 
@@ -58,6 +58,19 @@ router.all('/community-rollup', requireCronSecret, async (_req, res) => {
     res.json({ ok: true, ...result });
   } catch (err) {
     console.error('[cron] community-rollup failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Triggered every few minutes by an external scheduler — recomputes the tracker leaderboard
+// rollups off the request path (this used to run inline on every /api/v1/tracker ingest).
+router.all('/tracker-rollup', requireCronSecret, async (_req, res) => {
+  try {
+    await refreshTrackerRollups();
+    console.log('[cron] tracker-rollup ok');
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[cron] tracker-rollup failed:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

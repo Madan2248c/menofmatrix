@@ -357,7 +357,78 @@ export async function communityRollup() {
  * Tool Usage Rankings — RESERVED. No tracker feeds member_tool_usage yet, so
  * this returns the latest rollup (empty until the feature lands).
  */
+export async function refreshTrackerRollups() {
+  try {
+    const liveStats = await query(
+      `SELECT agent_id,
+              agent_name,
+              COUNT(DISTINCT user_id)::int AS members,
+              SUM(total_tokens)::bigint AS raw_tokens,
+              RANK() OVER (ORDER BY SUM(total_tokens) DESC)::int AS rank_pos
+         FROM tracker_daily_usage
+        GROUP BY agent_id, agent_name`
+    );
+
+    if (!liveStats.rows || liveStats.rows.length === 0) return;
+    const grandTotal = liveStats.rows.reduce((acc, r) => acc + Number(r.raw_tokens || 0), 0) || 1;
+
+    for (const r of liveStats.rows) {
+      const tokensNum = Number(r.raw_tokens || 0);
+      const share = ((tokensNum / grandTotal) * 100).toFixed(2);
+
+      await query(
+        `INSERT INTO tracker_summary_rollups (agent_id, agent_name, total_members, total_tokens, share_percent, rank_position, last_updated)
+         VALUES ($1, $2, $3, $4, $5, $6, now())
+         ON CONFLICT (agent_id) DO UPDATE SET
+           agent_name = EXCLUDED.agent_name,
+           total_members = EXCLUDED.total_members,
+           total_tokens = EXCLUDED.total_tokens,
+           share_percent = EXCLUDED.share_percent,
+           rank_position = EXCLUDED.rank_position,
+           last_updated = now()`,
+        [r.agent_id, r.agent_name, r.members, tokensNum, share, r.rank_pos]
+      ).catch(() => {});
+    }
+  } catch (err) {
+    console.error('[Rollup Refresh Error]', err.message);
+  }
+}
+
 export async function toolRankings() {
+  // 1. First attempt reading from pre-aggregated summary rollups table (< 1ms query time)
+  const rollups = await query(
+    `SELECT agent_id AS tool_slug,
+            agent_name AS name,
+            total_members AS members,
+            total_tokens AS raw_tokens,
+            share_percent AS share,
+            rank_position AS rank,
+            0 AS movement
+       FROM tracker_summary_rollups
+      ORDER BY rank_position`
+  ).catch(() => ({ rows: [] }));
+
+  if (rollups.rows && rollups.rows.length > 0) {
+    return rollups.rows.map((r) => {
+      const tokensNum = Number(r.raw_tokens || 0);
+      let tokensFormatted = tokensNum.toString();
+      if (tokensNum >= 1_000_000_000) tokensFormatted = (tokensNum / 1_000_000_000).toFixed(2) + 'B';
+      else if (tokensNum >= 1_000_000) tokensFormatted = (tokensNum / 1_000_000).toFixed(1) + 'M';
+      else if (tokensNum >= 1_000) tokensFormatted = (tokensNum / 1_000).toFixed(0) + 'K';
+
+      return {
+        tool_slug: r.tool_slug,
+        name: r.name,
+        members: Number(r.members || 0),
+        share: r.share.toString(),
+        tokens: tokensFormatted,
+        rank: Number(r.rank || 1),
+        movement: 0,
+      };
+    });
+  }
+
+  // 2. Fallback to direct aggregated calculation if rollups are empty
   const liveStats = await query(
     `SELECT agent_id AS tool_slug,
             agent_name AS name,
@@ -391,7 +462,7 @@ export async function toolRankings() {
     });
   }
 
-  // Fallback / Initial AI Agent Token Rankings for Men of Matrix
+  // 3. Fallback / Initial AI Agent Token Rankings for Men of Matrix
   return [
     { tool_slug: 'codex', name: 'Codex', share: '39.1', members: 2150, tokens: '1.12B', rank: 1, movement: 0 },
     { tool_slug: 'opencode', name: 'OpenCode', share: '36.2', members: 1890, tokens: '1.03B', rank: 2, movement: 1 },
