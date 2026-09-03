@@ -274,7 +274,7 @@ router.get('/v1/tracker/config', async (_req, res) => {
   res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=60');
   res.json({
     ok: true,
-    ingest_url: process.env.MOM_TRACKER_INGEST_URL || 'https://menofmatrix.com/api/v1/tracker',
+    ingest_url: process.env.MOM_TRACKER_INGEST_URL || 'https://menofmatrix.vercel.app/api/v1/tracker',
     min_cli_version: '1.0.0',
     current_version: CLI_VERSION,
     notice: null,
