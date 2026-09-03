@@ -1,6 +1,6 @@
 {
   "name": "mom-tracker",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Men of Matrix AI coding-agent token usage tracker CLI and daemon",
   "type": "module",
   "main": "bin/mom-tracker.js",
