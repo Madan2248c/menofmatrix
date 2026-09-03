@@ -44,6 +44,8 @@ enum Commands {
         #[arg(short, long)]
         api_endpoint: Option<String>,
     },
+    /// Log out of your MOM Tracker account and pause data collection & sync
+    Logout,
     /// Install and enable the continuous background tracking service
     Install,
     /// Uninstall and stop the background service (preserves local config & data)
@@ -118,6 +120,20 @@ fn main() {
                 if let Err(e) = run_web_login_flow(api_endpoint) {
                     eprintln!("❌ Login Error: {}", e);
                 }
+            }
+        }
+
+        Some(Commands::Logout) => {
+            let mut cfg = get_config();
+            cfg.user_id = None;
+            cfg.user_email = None;
+            cfg.auth_token = None;
+            if let Ok(_) = save_config(&cfg) {
+                println!("✅ Successfully logged out of MOM Tracker!");
+                println!("   Data collection & server sync are now paused.");
+                println!("   Run 'mom-tracker login' anytime to log back in.");
+            } else {
+                eprintln!("❌ Failed to update configuration for logout.");
             }
         }
 
