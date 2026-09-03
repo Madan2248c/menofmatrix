@@ -1,10 +1,11 @@
+use std::collections::HashMap;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use rusqlite::Connection;
 use serde_json::Value;
 use crate::types::{AgentId, AgentUsageSnapshot, TokenUsage};
-use super::{empty_token_usage, get_possible_platform_paths, get_today_date_string, AgentAdapter};
+use super::{empty_token_usage, file_mtime_to_date_string, get_possible_platform_paths, parse_iso_date_string, AgentAdapter};
 
 pub struct AntigravityAdapter;
 
@@ -19,10 +20,12 @@ impl AntigravityAdapter {
         candidates.into_iter().filter(|p| p.exists()).collect()
     }
 
-    fn parse_sqlite_gen_metadata(&self, db_path: &PathBuf, usage: &mut TokenUsage) {
+    fn parse_sqlite_gen_metadata(&self, db_path: &PathBuf, daily_map: &mut HashMap<String, TokenUsage>) {
         let Ok(conn) = Connection::open_with_flags(db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY) else {
             return;
         };
+
+        let date_str = file_mtime_to_date_string(db_path);
 
         let Ok(mut stmt) = conn.prepare("SELECT data FROM gen_metadata ORDER BY idx") else {
             return;
@@ -35,15 +38,13 @@ impl AntigravityAdapter {
 
         if let Ok(blobs) = rows {
             for blob_res in blobs.flatten() {
-                self.extract_tokens_from_proto(&blob_res, usage);
+                self.extract_tokens_from_proto(&blob_res, &date_str, daily_map);
             }
         }
     }
 
-    fn extract_tokens_from_proto(&self, blob: &[u8], usage: &mut TokenUsage) {
-        // proto field #1 is chat_model (length-delimited)
+    fn extract_tokens_from_proto(&self, blob: &[u8], date_str: &str, daily_map: &mut HashMap<String, TokenUsage>) {
         let Some((_, chat_model, _)) = get_proto_sub_message(blob, 1) else { return; };
-        // field #4 in chat_model is usage (length-delimited)
         let Some((_, usage_blob, _)) = get_proto_sub_message(chat_model, 4) else { return; };
 
         let sys_prompt = get_proto_varint(usage_blob, 1).unwrap_or(0);
@@ -52,6 +53,7 @@ impl AntigravityAdapter {
         let output = get_proto_varint(usage_blob, 9).unwrap_or(0);
         let reasoning = get_proto_varint(usage_blob, 10).unwrap_or(0);
 
+        let usage = daily_map.entry(date_str.to_string()).or_insert_with(empty_token_usage);
         usage.input_tokens += sys_prompt + input;
         usage.output_tokens += output;
         usage.thinking_tokens += reasoning;
@@ -59,13 +61,21 @@ impl AntigravityAdapter {
         usage.total_tokens += sys_prompt + input + output + reasoning;
     }
 
-    fn parse_transcript_for_tokens(&self, path: &PathBuf, usage: &mut TokenUsage) {
+    fn parse_transcript_for_tokens(&self, path: &PathBuf, daily_map: &mut HashMap<String, TokenUsage>) {
         let Ok(file) = fs::File::open(path) else { return; };
+        let default_date = file_mtime_to_date_string(path);
         let reader = BufReader::new(file);
 
         for line in reader.lines().flatten() {
             if line.trim().is_empty() { continue; }
             let Ok(obj) = serde_json::from_str::<Value>(&line) else { continue; };
+
+            let date_str = obj
+                .get("timestamp")
+                .or_else(|| obj.get("created_at"))
+                .and_then(Value::as_str)
+                .and_then(parse_iso_date_string)
+                .unwrap_or_else(|| default_date.clone());
 
             let u = obj.get("token_usage").or_else(|| obj.get("usage"));
             if let Some(u) = u {
@@ -74,6 +84,7 @@ impl AntigravityAdapter {
                 let thinking = u.get("thinking_tokens").and_then(Value::as_u64).unwrap_or(0);
                 let cached = u.get("cached_tokens").and_then(Value::as_u64).unwrap_or(0);
 
+                let usage = daily_map.entry(date_str).or_insert_with(empty_token_usage);
                 usage.input_tokens += input;
                 usage.output_tokens += output;
                 usage.thinking_tokens += thinking;
@@ -171,25 +182,23 @@ impl AgentAdapter for AntigravityAdapter {
         !self.get_antigravity_dirs().is_empty()
     }
 
-    fn collect_usage(&self) -> AgentUsageSnapshot {
-        let mut usage = empty_token_usage();
+    fn collect_usage(&self) -> Vec<AgentUsageSnapshot> {
+        let mut daily_map: HashMap<String, TokenUsage> = HashMap::new();
         let dirs = self.get_antigravity_dirs();
 
         for dir in dirs {
-            // 1. Scan SQLite database files in conversations/
             let conv_dir = dir.join("conversations");
             if conv_dir.exists() {
                 if let Ok(files) = fs::read_dir(conv_dir) {
                     for file in files.flatten() {
                         let path = file.path();
                         if path.extension().and_then(|e| e.to_str()) == Some("db") {
-                            self.parse_sqlite_gen_metadata(&path, &mut usage);
+                            self.parse_sqlite_gen_metadata(&path, &mut daily_map);
                         }
                     }
                 }
             }
 
-            // 2. Scan brain/ transcript JSONL files
             let brain_dir = dir.join("brain");
             if brain_dir.exists() {
                 if let Ok(folders) = fs::read_dir(brain_dir) {
@@ -200,23 +209,22 @@ impl AgentAdapter for AntigravityAdapter {
                             .join("logs")
                             .join("transcript.jsonl");
                         if transcript.exists() {
-                            self.parse_transcript_for_tokens(&transcript, &mut usage);
+                            self.parse_transcript_for_tokens(&transcript, &mut daily_map);
                         }
                     }
                 }
             }
         }
 
-        if usage.total_tokens == 0 {
-            usage.total_tokens = usage.input_tokens + usage.output_tokens + usage.thinking_tokens;
-        }
-
-        AgentUsageSnapshot {
-            agent_id: self.id(),
-            agent_name: self.name().to_string(),
-            timestamp: chrono::Utc::now().to_rfc3339(),
-            date: get_today_date_string(),
-            usage,
-        }
+        daily_map
+            .into_iter()
+            .map(|(date_str, usage)| AgentUsageSnapshot {
+                agent_id: self.id(),
+                agent_name: self.name().to_string(),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                date: date_str,
+                usage,
+            })
+            .collect()
     }
 }

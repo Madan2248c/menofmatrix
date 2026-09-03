@@ -4,14 +4,16 @@ pub mod codex;
 pub mod antigravity;
 pub mod cline;
 
+use std::fs;
 use std::path::PathBuf;
+use chrono::{DateTime, Utc};
 use crate::types::{AgentDetectResult, AgentId, AgentUsageSnapshot, TokenUsage};
 
 pub trait AgentAdapter {
     fn id(&self) -> AgentId;
     fn name(&self) -> &'static str;
     fn detect(&self) -> bool;
-    fn collect_usage(&self) -> AgentUsageSnapshot;
+    fn collect_usage(&self) -> Vec<AgentUsageSnapshot>;
 }
 
 pub fn get_possible_platform_paths(relative_subpath: &str) -> Vec<PathBuf> {
@@ -81,7 +83,7 @@ pub fn collect_all_agent_usage() -> Vec<AgentUsageSnapshot> {
     let mut snapshots = Vec::new();
     for a in adapters {
         if a.detect() {
-            snapshots.push(a.collect_usage());
+            snapshots.extend(a.collect_usage());
         }
     }
     snapshots
@@ -92,5 +94,33 @@ pub fn empty_token_usage() -> TokenUsage {
 }
 
 pub fn get_today_date_string() -> String {
-    chrono::Utc::now().format("%Y-%m-%d").to_string()
+    Utc::now().format("%Y-%m-%d").to_string()
+}
+
+pub fn timestamp_to_date_string(timestamp_ms: i64) -> String {
+    if let Some(dt) = DateTime::from_timestamp(timestamp_ms / 1000, 0) {
+        dt.format("%Y-%m-%d").to_string()
+    } else {
+        get_today_date_string()
+    }
+}
+
+pub fn file_mtime_to_date_string(path: &PathBuf) -> String {
+    if let Ok(meta) = fs::metadata(path) {
+        if let Ok(modified) = meta.modified() {
+            let datetime: DateTime<Utc> = modified.into();
+            return datetime.format("%Y-%m-%d").to_string();
+        }
+    }
+    get_today_date_string()
+}
+
+pub fn parse_iso_date_string(iso_str: &str) -> Option<String> {
+    if iso_str.len() >= 10 {
+        let date_part = &iso_str[..10];
+        if date_part.chars().filter(|c| *c == '-').count() == 2 {
+            return Some(date_part.to_string());
+        }
+    }
+    None
 }
