@@ -43,6 +43,57 @@ const trackerIngestLimiter = rateLimit({
 
 const MAX_TRACKER_SNAPSHOTS_PER_REQUEST = 500;
 
+// --- Backend migration support -------------------------------------------------------------
+//
+// The CLI re-resolves GET /v1/tracker/config on every sync (sync.rs: fetch_remote_config runs
+// before every sync, not just once) and persists whatever ingest_url it gets back. So moving to
+// a new backend domain is normally just: deploy the new backend, then set MOM_TRACKER_FORWARD_TO
+// on THIS (old) deployment. Every actively-syncing CLI picks up the new ingest_url within one
+// sync interval (10 min by default) with no CLI upgrade needed.
+//
+// The one case that doesn't self-heal: a CLI that was given a manual override
+// (`mom-tracker login --api-endpoint ...` / `mom-tracker config set api-endpoint ...`) never
+// calls discovery again (see sync.rs: fetch_remote_config short-circuits when
+// is_manual_endpoint_override is true) and will keep POSTing straight to this old domain
+// forever. MOM_TRACKER_FORWARD_TO also makes this deployment transparently proxy those requests
+// to the new backend, so this old domain can be kept alive as a thin forwarder for a grace
+// period (e.g. 1-2 months) after cutover, then retired.
+//
+// Keep the deployment that owns CANONICAL_DISCOVERY_URL (mom-tracker/src/config.rs) alive
+// indefinitely, even after the real backend moves — it's every CLI's only anchor for finding
+// a new home.
+const FORWARD_TO = (process.env.MOM_TRACKER_FORWARD_TO || '').replace(/\/+$/, '');
+const FORWARD_TIMEOUT_MS = 10_000;
+
+// Pure reverse-proxy for the ingest route: forward-only, fail closed. If the new backend is
+// unreachable we return the failure to the client rather than falling back to processing the
+// write locally — sync.rs only clears its local queue on a successful response, so a failed
+// forward just means the client retries on its next cycle. No dual-write, no merge logic.
+async function forwardTrackerIngest(req, res) {
+  const target = `${FORWARD_TO}/api/v1/tracker`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FORWARD_TIMEOUT_MS);
+  try {
+    const upstream = await fetch(target, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(req.headers.authorization ? { Authorization: req.headers.authorization } : {}),
+      },
+      body: JSON.stringify(req.body || {}),
+      signal: controller.signal,
+    });
+    const text = await upstream.text();
+    console.log(`[Tracker Forward] -> ${target} (${upstream.status})`);
+    res.status(upstream.status).type(upstream.headers.get('content-type') || 'application/json').send(text);
+  } catch (err) {
+    console.error('[Tracker Forward] failed:', err.message);
+    res.status(502).json({ error: 'Upstream tracker backend unreachable', forwarded_to: FORWARD_TO });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // ---------- Public (read-only) endpoints ----------
 
 // Public: post feed (public Instagram content served from our cache)
@@ -270,11 +321,15 @@ router.post('/automation/run', requireOwner, async (req, res) => {
 });
 
 // Dynamic endpoint discovery for all deployed mom-tracker CLIs. Static payload — cache it.
+// Short TTL: during an active domain cutover, propagation speed matters more than shaving a
+// few extra reads of a cheap static response.
 router.get('/v1/tracker/config', async (_req, res) => {
-  res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=60');
+  res.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30');
   res.json({
     ok: true,
-    ingest_url: process.env.MOM_TRACKER_INGEST_URL || 'https://menofmatrix.vercel.app/api/v1/tracker',
+    ingest_url:
+      process.env.MOM_TRACKER_INGEST_URL ||
+      (FORWARD_TO ? `${FORWARD_TO}/api/v1/tracker` : 'https://menofmatrix.vercel.app/api/v1/tracker'),
     min_cli_version: '1.0.0',
     current_version: CLI_VERSION,
     notice: null,
@@ -283,7 +338,14 @@ router.get('/v1/tracker/config', async (_req, res) => {
 
 // Requires a real community JWT (Bearer token from Google sign-in via /auth/cli) so ingestion
 // can't be spoofed as another user. Identity comes from the verified token, never the body.
-router.post('/v1/tracker', requireMember, trackerIngestLimiter, wrap(async (req, res) => {
+// When MOM_TRACKER_FORWARD_TO is set, this deployment is in migration mode: it does no local
+// auth/processing and purely proxies to the new backend (see forwardTrackerIngest above), which
+// does its own auth. This is what lets a retired domain keep serving stragglers stuck on a
+// manual endpoint override, with zero local write path.
+router.post('/v1/tracker', wrap(async (req, res, next) => {
+  if (FORWARD_TO) return forwardTrackerIngest(req, res);
+  next();
+}), requireMember, trackerIngestLimiter, wrap(async (req, res) => {
   const { records, clientTimestamp } = req.body || {};
   const recordList = Array.isArray(records) ? records : [];
   // Existing rows are keyed by email (the CLI/frontend historically sent session.user.email as
