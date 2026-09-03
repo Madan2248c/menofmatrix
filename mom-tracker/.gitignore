@@ -1,0 +1,6 @@
+/target
+/dist
+/bin/mom-tracker
+/bin/mom-tracker.exe
+node_modules/
+.mom-tracker/

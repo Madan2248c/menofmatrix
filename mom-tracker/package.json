@@ -1,0 +1,27 @@
+{
+  "name": "mom-tracker",
+  "version": "1.0.0",
+  "description": "Men of Matrix AI coding-agent token usage tracker CLI and daemon",
+  "type": "module",
+  "main": "bin/mom-tracker.js",
+  "bin": {
+    "mom-tracker": "bin/mom-tracker.js"
+  },
+  "files": [
+    "bin",
+    "scripts",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "node scripts/install.js"
+  },
+  "keywords": [
+    "mom-tracker",
+    "men-of-matrix",
+    "ai-agent",
+    "token-tracker",
+    "leaderboard"
+  ],
+  "author": "Men of Matrix",
+  "license": "MIT"
+}

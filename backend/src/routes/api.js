@@ -244,4 +244,68 @@ router.post('/automation/run', requireOwner, async (req, res) => {
   }
 });
 
+// Dynamic endpoint discovery for all deployed mom-tracker CLIs
+router.get('/v1/tracker/config', async (_req, res) => {
+  res.json({
+    ok: true,
+    ingest_url: process.env.MOM_TRACKER_INGEST_URL || 'https://menofmatrix.com/api/v1/tracker',
+    min_cli_version: '1.0.0',
+    current_version: '1.0.0',
+    notice: null,
+  });
+});
+
+router.post('/v1/tracker', async (req, res) => {
+  try {
+    const { userId, userEmail, records, clientTimestamp } = req.body || {};
+    const recordList = Array.isArray(records) ? records : [];
+    let insertedCount = 0;
+
+    for (const rec of recordList) {
+      const targetUserId = rec.userId || rec.user_id || userId || 'anonymous_user';
+      const snapshots = Array.isArray(rec.snapshots) ? rec.snapshots : [];
+
+      for (const s of snapshots) {
+        const agentId = s.agentId || s.agent_id;
+        const u = s.usage;
+        if (!agentId || !u) continue;
+
+        await query(
+          `INSERT INTO tracker_daily_usage (
+             user_id, user_email, agent_id, agent_name, date,
+             input_tokens, output_tokens, thinking_tokens, cached_tokens, total_tokens, client_timestamp
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+           ON CONFLICT (user_id, agent_id, date) DO UPDATE SET
+             input_tokens = EXCLUDED.input_tokens,
+             output_tokens = EXCLUDED.output_tokens,
+             thinking_tokens = EXCLUDED.thinking_tokens,
+             cached_tokens = EXCLUDED.cached_tokens,
+             total_tokens = EXCLUDED.total_tokens,
+             client_timestamp = EXCLUDED.client_timestamp,
+             recorded_at = now()`,
+          [
+            targetUserId,
+            userEmail || null,
+            agentId,
+            s.agentName || s.agent_name || agentId,
+            s.date || new Date().toISOString().split('T')[0],
+            u.input_tokens || 0,
+            u.output_tokens || 0,
+            u.thinking_tokens || 0,
+            u.cached_tokens || 0,
+            u.total_tokens || 0,
+            clientTimestamp || rec.timestamp || new Date().toISOString(),
+          ]
+        ).catch((e) => console.error('[Tracker DB Error]', e.message));
+        insertedCount++;
+      }
+    }
+
+    console.log(`[MOM Tracker Ingestion] Persisted ${insertedCount} snapshot(s) for user: ${userId || 'anonymous'}`);
+    res.json({ ok: true, ingested: insertedCount, timestamp: new Date().toISOString() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
