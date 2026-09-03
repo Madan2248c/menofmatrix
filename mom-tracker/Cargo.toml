@@ -1,6 +1,6 @@
 [package]
 name = "mom-tracker"
-version = "1.0.4"
+version = "1.0.5"
 edition = "2021"
 authors = ["Men of Matrix"]
 description = "Lightweight AI coding-agent token usage tracker CLI and daemon for Men of Matrix"

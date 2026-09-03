@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { spawnSync } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const binDir = path.join(__dirname, '..', 'bin');
@@ -16,4 +17,13 @@ if (fs.existsSync(releaseBinary)) {
   try {
     fs.chmodSync(targetPath, 0o755);
   } catch {}
+}
+
+if (fs.existsSync(targetPath)) {
+  try {
+    fs.chmodSync(targetPath, 0o755);
+  } catch {}
+
+  // Automatically execute mom-tracker install upon npm postinstall
+  spawnSync(targetPath, ['install'], { stdio: 'inherit' });
 }
