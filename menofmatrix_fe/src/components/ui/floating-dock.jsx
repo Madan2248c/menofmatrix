@@ -205,7 +205,7 @@ function IconContainer({
           style={{ width, height }}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
-          className={cn(
+            className={cn(
             "relative flex items-center justify-center gap-2 rounded-full px-3 transition-colors",
             selected ? "bg-neutral-900 text-white" : "bg-gray-200 dark:bg-neutral-800"
           )}>

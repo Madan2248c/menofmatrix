@@ -61,16 +61,24 @@ export async function fetchAllNews() {
     })
   );
 
-  // keep the table from growing forever: drop anything older than 30 days
-  await query(`DELETE FROM news_items WHERE published_at < now() - interval '30 days'`);
+  // Keep the RSS cache from growing forever: drop fetched items older than 30
+  // days. Admin-authored articles (guid 'admin:...') are curated content and
+  // must never be purged, regardless of their published date.
+  await query(
+    `DELETE FROM news_items
+      WHERE guid NOT LIKE 'admin:%'
+        AND ((published_at IS NOT NULL AND published_at < now() - interval '30 days')
+          OR (published_at IS NULL AND fetched_at < now() - interval '30 days'))`
+  );
   return results;
 }
 
 /** Latest items for the public feed. */
 export async function latestNews(limit = 30) {
   const { rows } = await query(
-    `SELECT id, source, title, link, summary, published_at
-     FROM news_items ORDER BY published_at DESC NULLS LAST LIMIT $1`,
+    `SELECT id, source, title, link, summary, image_url, is_featured, published_at
+     FROM news_items WHERE status = 'published'
+     ORDER BY is_featured DESC, published_at DESC NULLS LAST LIMIT $1`,
     [Math.min(Number(limit) || 30, 100)]
   );
   return rows;

@@ -6,19 +6,11 @@ import { Poppins } from "next/font/google";
 import { TrendingUp } from "lucide-react";
 import FeaturePopout from "@/components/FeaturePopout";
 import { MORPH, GLASS } from "@/lib/motion";
+import { communityFetch } from "@/lib/community";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
-const GOAL = 1000;
-const DELTA = 18; // % vs last week
-
-const METRICS = [
-  { key: "votes", label: "Votes cast", value: "412", note: "×1", pts: 412 },
-  { key: "ideas", label: "Ideas added", value: "4", note: "×25", pts: 100 },
-  { key: "builders", label: "Builders active", value: "4", note: "×40", pts: 160 },
-  { key: "challenge", label: "Challenge progress", value: "46%", note: "of the week", pts: 70 },
-];
-const SCORE = METRICS.reduce((a, m) => a + m.pts, 0); // 742
+const EMPTY_SCORE = { score: 0, goal: 1000, metrics: [] };
 
 function useCountUp(target, { duration = 1200, run = true } = {}) {
   const [n, setN] = useState(run ? 0 : target);
@@ -40,29 +32,33 @@ function useCountUp(target, { duration = 1200, run = true } = {}) {
 
 /* The Men of Matrix mark (its own dot-art "M") with an orange level
    rising through it up to the score. */
-let DOT_CACHE = null;
+let DOT_PROMISE = null;
 
-function useMarkDots() {
-  const [dots, setDots] = useState(DOT_CACHE);
-  useEffect(() => {
-    if (DOT_CACHE) return;
-    let alive = true;
-    fetch("/brand/menofmatrix-mark.svg")
+// Fetch + parse the mark once, sharing a single in-flight promise so two
+// BrandM instances mounting together don't race (and don't double-fetch).
+function loadMarkDots() {
+  if (!DOT_PROMISE) {
+    DOT_PROMISE = fetch("/brand/menofmatrix-mark.svg")
       .then((r) => r.text())
       .then((txt) => {
         const doc = new DOMParser().parseFromString(txt, "image/svg+xml");
-        const cs = [...doc.querySelectorAll("circle")].map((c) => ({
+        return [...doc.querySelectorAll("circle")].map((c) => ({
           cx: +c.getAttribute("cx"),
           cy: +c.getAttribute("cy"),
           r: +c.getAttribute("r"),
         }));
-        DOT_CACHE = cs;
-        if (alive) setDots(cs);
       })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
+      .catch(() => []);
+  }
+  return DOT_PROMISE;
+}
+
+function useMarkDots() {
+  const [dots, setDots] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    loadMarkDots().then((cs) => alive && setDots(cs));
+    return () => { alive = false; };
   }, []);
   return dots;
 }
@@ -70,8 +66,9 @@ function useMarkDots() {
 function BrandM({ pct, size = 168, run = true }) {
   const dots = useMarkDots();
   const clipId = `mRise-${size}`;
+  const fillId = `mFill-${size}`;
 
-  if (!dots) return <div style={{ width: size, height: size }} />;
+  if (!dots || !dots.length) return <div style={{ width: size, height: size }} />;
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const d of dots) {
@@ -89,7 +86,7 @@ function BrandM({ pct, size = 168, run = true }) {
   return (
     <svg viewBox={vb} style={{ width: size, height: size, overflow: "visible" }}>
       <defs>
-        <linearGradient id="mFill" x1="0" y1="1" x2="0" y2="0">
+        <linearGradient id={fillId} x1="0" y1="1" x2="0" y2="0">
           <stop offset="0" stopColor="#ea580c" />
           <stop offset="1" stopColor="#fdba74" />
         </linearGradient>
@@ -114,8 +111,7 @@ function BrandM({ pct, size = 168, run = true }) {
       {/* orange level */}
       <g
         clipPath={`url(#${clipId})`}
-        fill="url(#mFill)"
-        style={{ filter: "drop-shadow(0 0 2px rgba(234,88,12,0.4))" }}
+        fill={`url(#${fillId})`}
       >
         {dots.map((d, i) => (
           <circle key={i} cx={d.cx} cy={d.cy} r={d.r * 1.12} />
@@ -126,9 +122,9 @@ function BrandM({ pct, size = 168, run = true }) {
 }
 
 /* ---------- expanded breakdown ---------- */
-function ScorePanel() {
-  const n = useCountUp(SCORE, { duration: 900 });
-  const pct = SCORE / GOAL;
+function ScorePanel({ data }) {
+  const n = useCountUp(data.score, { duration: 900 });
+  const pct = data.goal ? Math.min(1, data.score / data.goal) : 0;
   return (
     <div className={`${poppins.className} flex w-full max-w-[340px] flex-col items-center`}>
       <span className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-900">
@@ -141,14 +137,12 @@ function ScorePanel() {
         <span className="text-[28px] font-semibold leading-none tabular-nums text-neutral-900">
           {n}
         </span>
-        <span className="text-[10px] font-medium text-neutral-400">/ {GOAL}</span>
+        <span className="text-[10px] font-medium text-neutral-400">/ {data.goal}</span>
       </div>
-      <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-orange-600">
-        <TrendingUp className="h-3 w-3" strokeWidth={3} />+{DELTA}% vs last week
-      </div>
+      <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-orange-600"><TrendingUp className="h-3 w-3" strokeWidth={3} />This week</div>
 
       <ul className="mt-3 w-full">
-        {METRICS.map((m) => (
+        {data.metrics.map((m) => (
           <li
             key={m.key}
             className="mb-1.5 flex items-center gap-2 rounded-lg px-2.5 py-1.5"
@@ -156,9 +150,9 @@ function ScorePanel() {
           >
             <span className="text-[11px] font-semibold text-neutral-900">{m.value}</span>
             <span className="text-[10.5px] font-medium text-neutral-500">{m.label}</span>
-            <span className="ml-auto text-[9px] font-medium text-neutral-400">{m.note}</span>
+            <span className="ml-auto text-[9px] font-medium text-neutral-400">×{m.multiplier}</span>
             <span className="w-10 text-right text-[10px] font-semibold tabular-nums text-orange-600">
-              +{m.pts}
+              +{m.points}
             </span>
           </li>
         ))}
@@ -175,8 +169,14 @@ function ScorePanel() {
 
 /* ---------- canvas centerpiece ---------- */
 export default function MatrixScore() {
-  const n = useCountUp(SCORE);
-  const pct = SCORE / GOAL;
+  const [data, setData] = useState(EMPTY_SCORE);
+  useEffect(() => {
+    communityFetch("/api/community/score", { ttl: 60_000 })
+      .then((json) => setData(json.data || EMPTY_SCORE))
+      .catch(() => {});
+  }, []);
+  const n = useCountUp(data.score);
+  const pct = data.goal ? Math.min(1, data.score / data.goal) : 0;
 
   return (
     <FeaturePopout
@@ -201,6 +201,7 @@ export default function MatrixScore() {
               }}
             />
             <motion.div
+              style={{ willChange: "transform" }}
               animate={{ scale: [1, 1.02, 1] }}
               transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut" }}
             >
@@ -212,19 +213,17 @@ export default function MatrixScore() {
             <span className="text-[40px] font-semibold leading-none tabular-nums text-neutral-900">
               {n}
             </span>
-            <span className="text-[11px] font-medium text-neutral-400">/ {GOAL}</span>
+            <span className="text-[11px] font-medium text-neutral-400">/ {data.goal}</span>
           </div>
-          <span className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-orange-600">
-            <TrendingUp className="h-3 w-3" strokeWidth={3} />+{DELTA}% this week
-          </span>
+          <span className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-orange-600"><TrendingUp className="h-3 w-3" strokeWidth={3} />Community activity this week</span>
 
-          <span className="mt-2 text-[9.5px] font-medium text-neutral-400 opacity-0 transition-opacity group-hover:opacity-100">
-            tap for the breakdown
+          <span className="mt-2 rounded-full border border-neutral-200 bg-white/80 px-2.5 py-1 text-[11px] font-medium text-neutral-600 opacity-100 transition-colors group-hover:border-orange-200 group-hover:text-orange-700">
+            View score breakdown
           </span>
         </motion.div>
       }
     >
-      <ScorePanel />
+      <ScorePanel data={data} />
     </FeaturePopout>
   );
 }

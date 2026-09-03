@@ -61,11 +61,12 @@ export const GLASS = {
 
 // the floating panel a feature morphs open into
 export const GLASS_PANEL = {
-  background: "rgba(255,255,255,0.72)",
-  backdropFilter: "blur(30px) saturate(180%)",
-  WebkitBackdropFilter: "blur(30px) saturate(180%)",
-  border: "1px solid rgba(255,255,255,0.6)",
-  boxShadow: "0 30px 80px -20px rgba(0,0,0,0.4)",
+  borderRadius: "11px",
+  background: "rgba(249,249,249,0.58)",
+  backdropFilter: "blur(22px) saturate(145%)",
+  WebkitBackdropFilter: "blur(22px) saturate(145%)",
+  border: "1px solid rgba(255,255,255,0.72)",
+  boxShadow: "0 24px 64px -24px rgba(0,0,0,0.28)",
 };
 
 // opaque white card that must read on the busy dot-grid (poll options)

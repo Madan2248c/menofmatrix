@@ -15,7 +15,7 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const r = await fetch("/api/auth/login", {
+      const r = await fetch("/api/owner/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
@@ -23,7 +23,7 @@ export default function Login() {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "Login failed");
       setToken(j.token);
-      router.push("/dashboard");
+      router.push("/admin");
     } catch (err) {
       setError(err.message);
     } finally {

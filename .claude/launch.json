@@ -8,17 +8,11 @@
       "port": 4000
     },
     {
-      "name": "frontend",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
-      "port": 5173
-    },
-    {
       "name": "menofmatrix_fe",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "menofmatrix_fe", "run", "dev"],
       "port": 3000,
-      "autoPort": true
+      "autoPort": false
     }
   ]
 }

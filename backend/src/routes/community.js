@@ -6,6 +6,20 @@ import * as svc from '../services/communityService.js';
 const router = Router();
 const wrap = (fn) => (req, res) => fn(req, res).catch((e) => res.status(500).json({ error: e.message }));
 
+// Anonymous reads are safe to cache briefly. Member-aware reads remain private
+// because they include fields such as myVote and my_upvote.
+router.use((req, res, next) => {
+  if (req.method === 'GET') {
+    // Vary on Authorization so a shared cache never serves the anonymous body
+    // (missing myVote / my_upvote) to a signed-in member.
+    res.set('Vary', 'Authorization');
+    res.set('Cache-Control', req.headers.authorization
+      ? 'private, no-store'
+      : 'public, max-age=30, stale-while-revalidate=120');
+  }
+  next();
+});
+
 // ---------------- Public reads (member-aware) ----------------
 
 router.get('/polls', optionalMember, wrap(async (req, res) => {
@@ -64,6 +78,10 @@ router.get('/activity', wrap(async (req, res) => {
 router.get('/leaderboard', wrap(async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 10, 50);
   res.json({ data: await svc.leaderboard(limit) });
+}));
+
+router.get('/score', wrap(async (_req, res) => {
+  res.json({ data: await svc.communityScore() });
 }));
 
 router.get('/me', requireMember, wrap(async (req, res) => {

@@ -1,4 +1,4 @@
-const BACKEND = process.env.BACKEND_URL || "https://backend-two-delta-twnhtuwv4g.vercel.app";
+const BACKEND = process.env.BACKEND_URL || (process.env.NODE_ENV === "development" ? "http://localhost:4000" : "https://backend-two-delta-twnhtuwv4g.vercel.app");
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);

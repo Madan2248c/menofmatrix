@@ -1,25 +1,17 @@
 import { Router } from 'express';
-import jwt from 'jsonwebtoken';
 import 'dotenv/config';
+import { requireOwner } from '../middleware/requireOwner.js';
 import { latestNews, fetchAllNews } from '../services/newsService.js';
 
 const router = Router();
-
-function requireOwner(req, res, next) {
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  try {
-    jwt.verify(token || '', process.env.JWT_SECRET);
-    next();
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' });
-  }
-}
 
 /** Public: latest AI news. */
 router.get('/', async (req, res) => {
   try {
     const data = await latestNews(req.query.limit);
+    // Only cache a successful response — set the header after the await so a
+    // 500 isn't pinned in the CDN for 60s.
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
     res.json({ data });
   } catch (err) {
     res.status(500).json({ error: err.message });

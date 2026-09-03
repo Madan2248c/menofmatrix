@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { Poppins } from "next/font/google";
 import { Lightbulb, ChevronUp } from "lucide-react";
 import { BOUNCE, EASE } from "@/lib/motion";
+import { communityFetch } from "@/lib/community";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
@@ -14,21 +15,26 @@ const ROTATE_MS = 8000;
 const colorFor = (s) =>
   `hsl(${([...s].reduce((a, c) => a + c.charCodeAt(0), 0) * 37) % 360} 52% 55%)`;
 
-const IDEAS = [
-  { title: "Prompt regression tester", votes: 142, builders: ["mira", "arjun"] },
-  { title: "MCP server registry with health scores", votes: 98, builders: ["dev_ankit"] },
-  { title: "One-click eval set from a chat", votes: 64, builders: ["raj_builds", "lena"] },
-  { title: "Local model router", votes: 51, builders: [] },
-];
-
 /**
  * Launcher for the idea board — a glowing pile of idea notes that fans open
  * on hover. The front note cycles through ideas every 8s, showing each idea
  * with the top two people currently building it.
  */
-export default function IdeaChip({ count = 6, picks = 2, ideas = IDEAS }) {
+export default function IdeaChip() {
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [ideas, setIdeas] = useState([]);
+  const [picks, setPicks] = useState(0);
+
+  useEffect(() => {
+    Promise.all([
+      communityFetch("/api/community/ideas?sort=top", { ttl: 60_000 }),
+      communityFetch("/api/community/picks?featured=true", { ttl: 120_000 }),
+    ]).then(([ideaData, pickData]) => {
+      setIdeas((ideaData.data || []).slice(0, 6));
+      setPicks(pickData.picks?.length || 0);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (paused || ideas.length < 2) return;
@@ -36,7 +42,7 @@ export default function IdeaChip({ count = 6, picks = 2, ideas = IDEAS }) {
     return () => clearInterval(id);
   }, [paused, ideas.length]);
 
-  const idea = ideas[i % ideas.length];
+  const idea = ideas.length ? ideas[i % ideas.length] : null;
 
   return (
     <motion.div
@@ -141,19 +147,19 @@ export default function IdeaChip({ count = 6, picks = 2, ideas = IDEAS }) {
               <span className="mt-px flex shrink-0 items-center gap-0.5 text-orange-600">
                 <ChevronUp className="h-2.5 w-2.5" strokeWidth={3} />
                 <span className="text-[9px] font-bold tabular-nums">
-                  {idea.votes}
+                  {idea?.votes || 0}
                 </span>
               </span>
               <span className="line-clamp-2 text-[10.5px] font-medium leading-snug text-neutral-700">
-                {idea.title}
+                {idea?.title || "No ideas yet — be the first to suggest one"}
               </span>
             </div>
 
             <div className="mt-1.5 flex items-center gap-1.5 px-1">
-              {idea.builders.length > 0 ? (
+              {idea ? (
                 <>
                   <div className="flex -space-x-1.5">
-                    {idea.builders.slice(0, 2).map((b) => (
+                    {[idea.author].filter(Boolean).map((b) => (
                       <span
                         key={b}
                         title={b}
@@ -165,16 +171,12 @@ export default function IdeaChip({ count = 6, picks = 2, ideas = IDEAS }) {
                     ))}
                   </div>
                   <span className="truncate text-[8.5px] font-medium text-neutral-400">
-                    {idea.builders.slice(0, 2).join(", ")}
-                    {idea.builders.length > 2
-                      ? ` +${idea.builders.length - 2}`
-                      : ""}{" "}
-                    building
+                    @{idea.author} suggested
                   </span>
                 </>
               ) : (
                 <span className="text-[8.5px] italic text-neutral-400">
-                  open — nobody's building it yet
+                  Public board ready for its first idea
                 </span>
               )}
             </div>
@@ -194,7 +196,7 @@ export default function IdeaChip({ count = 6, picks = 2, ideas = IDEAS }) {
 
         <div className="mt-2 flex items-center justify-between text-[9.5px] font-medium text-neutral-400">
           <span>
-            {count} ideas · {picks} picks
+            {ideas.length} ideas · {picks} picks
           </span>
           <motion.span
             className="font-semibold text-neutral-900"

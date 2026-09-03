@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export const metadata = {
   title: "Privacy Policy — MenOfMatrix",
   description: "How MenOfMatrix and the LLM Usage extension handle your data. Private by default, only your usage numbers are synced when you choose to.",
@@ -5,11 +7,11 @@ export const metadata = {
 
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-dvh bg-[#fafaf8] text-neutral-800">
+    <div className="min-h-dvh bg-[#fafaf8] pb-32 text-neutral-800">
       <div className="mx-auto max-w-3xl px-6 py-12 md:py-16">
-        <a href="/" className="text-sm text-neutral-500 hover:text-neutral-800">
+        <Link href="/" className="text-sm text-neutral-500 hover:text-neutral-800">
           ← MenOfMatrix
-        </a>
+        </Link>
         <h1 className="mt-6 text-3xl font-bold tracking-tight text-neutral-900">Privacy Policy</h1>
         <p className="mt-2 text-sm text-neutral-500">Last updated: 30 August 2026</p>
 

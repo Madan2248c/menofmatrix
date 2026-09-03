@@ -26,11 +26,12 @@ export async function reportContent({ entityType, entityId, memberId, reason }) 
   const { rows } = await query(
     `UPDATE ${table}
         SET report_count = report_count + 1,
-            is_hidden = (report_count + 1) >= $2
+            is_hidden = is_hidden OR (report_count + 1) >= $2
       WHERE id = $1
       RETURNING report_count, is_hidden`,
     [entityId, AUTO_HIDE_THRESHOLD]
   );
+  if (!rows.length) return { counted: true, missing: true };
   return { counted: true, ...rows[0] };
 }
 
@@ -152,11 +153,13 @@ export async function currentChallenge({ memberId }) {
   return { ...challenge, entries: entries.map((e) => ({ ...e, my_vote: !!e.my_vote })) };
 }
 
+const isTrue = (v) => v === true || v === 'true' || v === '1';
+
 export async function listPicks({ featured, shipped }) {
   const params = [];
   let where = '1=1';
-  if (featured) where += ` AND is_featured = TRUE`;
-  if (shipped) where += ` AND in_ship_log = TRUE`;
+  if (isTrue(featured)) where += ` AND is_featured = TRUE`;
+  if (isTrue(shipped)) where += ` AND in_ship_log = TRUE`;
   const { rows } = await query(
     `SELECT id, title, url, blurb, category, origin, is_featured, in_ship_log, shipped_at, sort_order
        FROM picks WHERE ${where}
@@ -280,6 +283,32 @@ export async function leaderboard(limit = 10) {
     [limit]
   );
   return rows.map((r) => ({ ...r, score: Number(r.score), badges: badgesFor(Number(r.score)) }));
+}
+
+/** Public weekly community momentum. Uses only persisted actions; never seeded data. */
+export async function communityScore() {
+  const { rows } = await query(
+    `WITH week AS (SELECT date_trunc('week', now()) AS starts_at), counts AS (
+       SELECT
+         (SELECT COUNT(*) FROM poll_votes, week WHERE poll_votes.created_at >= week.starts_at)::int AS votes,
+         (SELECT COUNT(*) FROM ideas, week WHERE ideas.created_at >= week.starts_at AND is_hidden = FALSE)::int AS ideas,
+         (SELECT COUNT(DISTINCT member_id) FROM challenge_entries, week
+           WHERE challenge_entries.created_at >= week.starts_at AND is_hidden = FALSE)::int AS builders,
+         (SELECT COUNT(*) FROM challenge_entries, week
+           WHERE challenge_entries.created_at >= week.starts_at AND is_hidden = FALSE)::int AS entries
+     ) SELECT *, (votes + ideas * 25 + builders * 40 + entries * 10)::int AS score FROM counts`
+  );
+  const current = rows[0];
+  return {
+    goal: 1000,
+    score: current.score,
+    metrics: [
+      { key: 'votes', label: 'Votes cast', value: current.votes, multiplier: 1, points: current.votes },
+      { key: 'ideas', label: 'Ideas added', value: current.ideas, multiplier: 25, points: current.ideas * 25 },
+      { key: 'builders', label: 'Builders active', value: current.builders, multiplier: 40, points: current.builders * 40 },
+      { key: 'entries', label: 'Challenge entries', value: current.entries, multiplier: 10, points: current.entries * 10 },
+    ],
+  };
 }
 
 /**
