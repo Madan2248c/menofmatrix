@@ -29,6 +29,7 @@ pub fn default_config() -> TrackerConfig {
         sync_interval_minutes: 10,
         max_storage_mb: 25,
         timezone: "UTC".to_string(),
+        first_run_banner_shown: false,
     }
 }
 

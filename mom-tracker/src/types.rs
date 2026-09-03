@@ -71,6 +71,11 @@ pub struct TrackerConfig {
     pub sync_interval_minutes: u64,
     pub max_storage_mb: u64,
     pub timezone: String,
+    // #[serde(default)] keeps this backward-compatible: an existing config.json from before
+    // this field existed deserializes with `false` here instead of failing the whole parse
+    // (which would silently reset the user's saved login and settings back to defaults).
+    #[serde(default)]
+    pub first_run_banner_shown: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

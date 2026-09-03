@@ -94,6 +94,21 @@ enum ConfigAction {
 fn main() {
     let cli = Cli::parse();
 
+    // Show the welcome banner on this machine's first real CLI invocation, rather than relying
+    // on `npm install -g` to print it: npm hides all lifecycle-script (postinstall) output by
+    // default since npm v7 (the foreground-scripts config defaults to false), so the installer
+    // can't reliably reach the user's terminal. A command the user actually types always can.
+    // Skipped for the background daemon (never seen by a human) and Install (already shows its
+    // own banner unconditionally below, since a user re-running it explicitly wants to see it).
+    if !matches!(cli.command, Some(Commands::Daemon { .. }) | Some(Commands::Install)) {
+        let mut cfg = get_config();
+        if !cfg.first_run_banner_shown {
+            print_installation_banner();
+            cfg.first_run_banner_shown = true;
+            let _ = save_config(&cfg);
+        }
+    }
+
     match cli.command {
         Some(Commands::Login { user, email, token, api_endpoint }) => {
             if user.is_some() || token.is_some() {
@@ -142,6 +157,9 @@ fn main() {
             if success {
                 print_installation_banner();
                 println!("✅ {}", msg);
+                let mut cfg = get_config();
+                cfg.first_run_banner_shown = true;
+                let _ = save_config(&cfg);
             } else {
                 eprintln!("❌ {}", msg);
             }
@@ -296,7 +314,7 @@ fn main() {
 
         None => {
             let stats = get_storage_stats();
-            println!("Men of Matrix AI Token Tracker (Rust v1.0.0)");
+            println!("Men of Matrix AI Token Tracker (Rust v{})", env!("CARGO_PKG_VERSION"));
             println!("Run 'mom-tracker --help' for available commands.");
             println!("Status: {} MB / 25 MB storage used.", stats.used_mb);
         }
