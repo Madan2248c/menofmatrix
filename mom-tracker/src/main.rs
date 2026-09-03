@@ -18,7 +18,7 @@ use sync::sync_usage;
 #[command(
     name = "mom-tracker",
     author = "Men of Matrix",
-    version = "1.0.2",
+    version = env!("CARGO_PKG_VERSION"),
     about = "Men of Matrix - Lightweight AI Coding-Agent Token Usage Tracker",
     long_about = None
 )]
