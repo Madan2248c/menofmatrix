@@ -1,8 +1,44 @@
 /**
  * POST /api/usage — store LLM usage snapshots (opt-in only).
  * Receives normalized numbers from the extension bridge, not tokens.
- * If DATABASE_URL is set, writes to Neon `llm_usage_snapshots`, else no-op but returns ok.
+ * If DATABASE_URL is set, writes to Neon `llm_usage_snapshots`, else acks.
  */
+
+// Module-scoped pool, reused across warm invocations. Creating (and ending) a
+// Pool per request was a full TCP+TLS handshake each call and leaked the
+// connection on any error path.
+let _pool = null;
+let _ensured = false;
+
+async function getPool() {
+  if (!process.env.DATABASE_URL) return null;
+  if (!_pool) {
+    const { Pool } = await import("pg");
+    const needsSsl = !/(localhost|127\.0\.0\.1)/.test(process.env.DATABASE_URL);
+    _pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: needsSsl ? { rejectUnauthorized: false } : false,
+      max: 1,
+    });
+  }
+  return _pool;
+}
+
+async function ensureTable(pool) {
+  if (_ensured) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS llm_usage_snapshots (
+      id SERIAL PRIMARY KEY,
+      provider TEXT NOT NULL,
+      windows JSONB NOT NULL DEFAULT '[]',
+      spend JSONB,
+      captured_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      user_identifier TEXT
+    );
+  `);
+  _ensured = true;
+}
 
 export async function POST(request) {
   try {
@@ -12,65 +48,31 @@ export async function POST(request) {
     if (!snapshots.length) {
       return Response.json({ ok: false, error: "No snapshots" }, { status: 400 });
     }
-
-    // light validation
     for (const s of snapshots) {
       if (!s.provider || !s.usage) {
         return Response.json({ ok: false, error: "Invalid snapshot shape" }, { status: 400 });
       }
     }
 
-    // if no DB configured, just ack (dev mode)
-    if (!process.env.DATABASE_URL) {
-      console.log("[usage] no DATABASE_URL — mocked store", snapshots.length);
+    const pool = await getPool();
+    if (!pool) {
       return Response.json({ ok: true, mocked: true, count: snapshots.length });
     }
+    await ensureTable(pool);
 
-    // lazy import pg only when needed
-    const { Pool } = await import("pg");
-    const needsSsl = !/(localhost|127\.0\.0\.1)/.test(process.env.DATABASE_URL);
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: needsSsl ? { rejectUnauthorized: false } : false,
-      max: 1,
-    });
-
-    // ensure table exists (idempotent)
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS llm_usage_snapshots (
-        id SERIAL PRIMARY KEY,
-        provider TEXT NOT NULL,
-        windows JSONB NOT NULL DEFAULT '[]',
-        spend JSONB,
-        captured_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        user_identifier TEXT
-      );
-    `);
-
-    // Identify who this belongs to:
-    // Priority: Google user email (visitors) -> owner JWT -> device fallback
+    // Attribution only — the extension bridge sends its email/device id as a
+    // hint, not proof of identity. Never treat this value as authenticated; it
+    // only groups a device's own opt-in usage rows.
     let userIdentifier = null;
-    // 1) Google Sign-In — sent as plain email header/body (trusted after auth, no JWT verify needed)
     const userEmail = request.headers.get("x-user-email") || body.userEmail || null;
     if (userEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
       userIdentifier = userEmail.toLowerCase();
     }
-    // 2) owner JWT if no Google email
     if (!userIdentifier) {
-      const auth = request.headers.get("authorization") || "";
-      if (auth.startsWith("Bearer ")) {
-        try {
-          const { default: jwt } = await import("jsonwebtoken");
-          const payload = jwt.verify(auth.slice(7), process.env.JWT_SECRET);
-          userIdentifier = payload?.id || payload?.sub || payload?.email || payload?.role || null;
-        } catch {}
-      }
+      const deviceId = request.headers.get("x-device-id") || body.deviceId || null;
+      if (deviceId) userIdentifier = `device:${deviceId}`;
     }
-    // 3) per-browser device fallback (guest without Google)
-    const deviceId = request.headers.get("x-device-id") || body.deviceId || null;
-    if (!userIdentifier && deviceId) userIdentifier = `device:${deviceId}`;
-    if (!userIdentifier) userIdentifier = request.headers.get("x-user-id") || body.userId || "anonymous";
+    if (!userIdentifier) userIdentifier = "anonymous";
 
     for (const s of snapshots) {
       await pool.query(
@@ -80,7 +82,6 @@ export async function POST(request) {
       );
     }
 
-    await pool.end();
     return Response.json({ ok: true, count: snapshots.length });
   } catch (err) {
     console.error("[usage] POST failed", err);
@@ -89,22 +90,7 @@ export async function POST(request) {
 }
 
 export async function GET() {
-  // simple health + recent check
-  if (!process.env.DATABASE_URL) {
-    return Response.json({ ok: true, db: false, note: "Set DATABASE_URL to persist" });
-  }
-  try {
-    const { Pool } = await import("pg");
-    const needsSsl = !/(localhost|127\.0\.0\.1)/.test(process.env.DATABASE_URL);
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: needsSsl ? { rejectUnauthorized: false } : false,
-      max: 1,
-    });
-    const { rows } = await pool.query(`SELECT provider, windows, spend, captured_at FROM llm_usage_snapshots ORDER BY id DESC LIMIT 5`);
-    await pool.end();
-    return Response.json({ ok: true, recent: rows });
-  } catch (e) {
-    return Response.json({ ok: false, error: e.message }, { status: 500 });
-  }
+  // Health only. Never return usage rows here — they are per-user records and
+  // this endpoint is unauthenticated.
+  return Response.json({ ok: true, db: !!process.env.DATABASE_URL });
 }

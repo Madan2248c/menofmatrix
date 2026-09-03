@@ -2,46 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
+import { signIn, useSession } from "next-auth/react";
 import PollCard from "@/components/PollCard";
 import { EASE } from "@/lib/motion";
-
-const POLLS = [
-  {
-    id: "tools",
-    question: "Which AI coding tool do you reach for first?",
-    options: [
-      { id: "claude", label: "Claude Code", votes: 540 },
-      { id: "cursor", label: "Cursor", votes: 398 },
-      { id: "windsurf", label: "Windsurf", votes: 231 },
-      { id: "copilot", label: "GitHub Copilot", votes: 115 },
-    ],
-  },
-  {
-    id: "ship",
-    question: "How often do you ship something you built with AI?",
-    options: [
-      { id: "daily", label: "Almost every day", votes: 274 },
-      { id: "weekly", label: "A few times a week", votes: 431 },
-      { id: "sometimes", label: "Once in a while", votes: 189 },
-      { id: "exp", label: "Still just experimenting", votes: 96 },
-    ],
-  },
-  {
-    id: "model",
-    question: "What matters most in a model right now?",
-    options: [
-      { id: "reason", label: "Raw reasoning", votes: 356 },
-      { id: "speed", label: "Speed & latency", votes: 241 },
-      { id: "context", label: "Context window", votes: 198 },
-      { id: "price", label: "Price per token", votes: 132 },
-    ],
-  },
-];
+import { communityFetch, clearCommunityCache } from "@/lib/community";
 
 const INTERVAL = 9000;
 const VOTE_HOLD = 6500;
 
-export default function PollCarousel({ polls = POLLS, interval = INTERVAL }) {
+export default function PollCarousel({ interval = INTERVAL }) {
+  const { data: session } = useSession();
+  const [polls, setPolls] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [index, setIndex] = useState(0);
   const [hover, setHover] = useState(false);
   const [voteHold, setVoteHold] = useState(false);
@@ -51,6 +24,17 @@ export default function PollCarousel({ polls = POLLS, interval = INTERVAL }) {
   const swipeStart = useRef(null);
   const n = polls.length;
   const paused = hover || voteHold;
+
+  const loadPolls = useCallback(async () => {
+    try {
+      const json = await communityFetch("/api/community/polls", { token: session?.memberToken, ttl: 60_000 });
+      setPolls(json.data || []);
+      setError("");
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  }, [session?.memberToken]);
+
+  useEffect(() => { loadPolls(); }, [loadPolls]);
 
   const next = useCallback(() => setIndex((i) => (i + 1) % n), [n]);
   const prev = useCallback(() => setIndex((i) => (i - 1 + n) % n), [n]);
@@ -77,15 +61,18 @@ export default function PollCarousel({ polls = POLLS, interval = INTERVAL }) {
     return () => cancelAnimationFrame(raf);
   }, [paused, n, interval, index]);
 
-  // arrow-key navigation
+  // arrow-key navigation — ignored while typing and when there's nothing to page through
   useEffect(() => {
+    if (n < 2) return;
     const onKey = (e) => {
+      const t = e.target;
+      if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
       if (e.key === "ArrowLeft") prev();
       else if (e.key === "ArrowRight") next();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [next, prev]);
+  }, [n, next, prev]);
 
   useEffect(() => () => clearTimeout(holdTimer.current), []);
 
@@ -94,6 +81,27 @@ export default function PollCarousel({ polls = POLLS, interval = INTERVAL }) {
     clearTimeout(holdTimer.current);
     holdTimer.current = setTimeout(() => setVoteHold(false), VOTE_HOLD);
   }, []);
+
+  const vote = useCallback(async (pollId, optionId) => {
+    if (!session?.memberToken) {
+      await signIn("google");
+      return null;
+    }
+    const json = await communityFetch(`/api/community/polls/${pollId}/vote`, {
+      token: session.memberToken,
+      method: "POST",
+      body: JSON.stringify({ option_id: optionId }),
+    });
+    clearCommunityCache("/api/community/polls");
+    setPolls((current) => current.map((poll) => poll.id === pollId
+      ? { ...poll, ...json.data, myVote: optionId }
+      : poll));
+    handleVoted();
+    return json.data;
+  }, [handleVoted, session?.memberToken]);
+
+  if (loading) return <div className="h-[400px] w-full max-w-[380px] animate-pulse rounded-2xl bg-white/30" />;
+  if (!polls.length) return <div className="flex h-[300px] w-full max-w-[380px] flex-col items-center justify-center rounded-2xl border border-white/70 bg-white/25 px-8 text-center backdrop-blur-sm"><p className="text-sm font-semibold text-neutral-900">Community Pulse is warming up</p><p className="mt-2 text-xs leading-relaxed text-neutral-500">No live poll is published yet. New questions will appear here automatically.</p>{error && <p className="mt-3 text-[10px] text-red-500">{error}</p>}</div>;
 
   return (
     <div
@@ -142,7 +150,7 @@ export default function PollCarousel({ polls = POLLS, interval = INTERVAL }) {
               transition={{ duration: 0.9, ease: EASE }}
             >
               <div style={{ pointerEvents: isCenter ? "auto" : "none" }}>
-                <PollCard poll={poll} onVoted={isCenter ? handleVoted : undefined} />
+                <PollCard poll={poll} onVote={isCenter ? vote : undefined} />
               </div>
               {!isCenter && visible && (
                 <button

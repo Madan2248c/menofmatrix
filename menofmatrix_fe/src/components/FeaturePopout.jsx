@@ -67,9 +67,12 @@ export default function FeaturePopout({ trigger, children, label }) {
             {open && (
               <motion.div
                 className={`${poppins.className} fixed inset-0 z-[60] flex items-center justify-center p-4`}
+                role="dialog"
+                aria-modal="true"
+                aria-label={label}
               >
                 <motion.div
-                  className="absolute inset-0 bg-black/25 backdrop-blur-[3px]"
+                  className="absolute inset-0 bg-black/15 backdrop-blur-[4px]"
                   onClick={() => setOpen(false)}
                   {...vFade}
                   transition={{ duration: 0.25 }}
@@ -77,13 +80,14 @@ export default function FeaturePopout({ trigger, children, label }) {
                 <motion.div
                   layoutId={layoutId}
                   transition={MORPH}
-                  className="relative z-10 rounded-[24px] p-5"
+                  className="relative z-10 max-h-[88vh] max-w-[min(92vw,720px)] rounded-[11px] p-5"
                   style={GLASS_PANEL}
                 >
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
                     aria-label="Close"
+                    title={`Close ${label}`}
                     className="absolute -right-3 -top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-neutral-900 text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
                   >
                     <X className="h-4 w-4" strokeWidth={2.5} />

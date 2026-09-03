@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import jwt from 'jsonwebtoken';
 import 'dotenv/config';
 import { query } from '../config/db.js';
+import { requireOwner } from '../middleware/requireOwner.js';
 import { listAccounts, getFirstAccountId, getAccount, deleteAccount } from '../services/tokenStore.js';
 import { fetchStories } from '../services/instagram.js';
 import { syncAll } from '../services/syncService.js';
@@ -10,24 +10,21 @@ import { listRules, createRule, deleteRule, runAutomation } from '../services/au
 
 const router = Router();
 
-/** Bearer-JWT guard for owner-only endpoints. */
-export function requireOwner(req, res, next) {
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  try {
-    jwt.verify(token || '', process.env.JWT_SECRET);
-    next();
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' });
-  }
-}
+// Re-export so existing importers (youtube.js) keep working.
+export { requireOwner };
+
+// Forward async handler rejections to Express's error middleware. Express 4
+// does not await route handlers, so an unguarded rejection is an unhandled
+// promise — fatal under Node's default. Wrap every async route.
+const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 // ---------- Public (read-only) endpoints ----------
 
 // Public: post feed (public Instagram content served from our cache)
-router.get('/posts', async (req, res) => {
+router.get('/posts', wrap(async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
-  const { offset = 0, type } = req.query;
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+  const { type } = req.query;
   const params = [];
   let where;
   if (type === 'STORY') {
@@ -49,17 +46,13 @@ router.get('/posts', async (req, res) => {
     params
   );
   res.json({ data: rows });
-});
+}));
 
-router.get('/stories', async (req, res) => {
-  const limit = Number(req.query.limit) || 20;
+// Public: cached stories only. The live Instagram fetch lives on the
+// owner-only /stories/live route so unauthenticated traffic can't burn quota.
+router.get('/stories', wrap(async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 20, 100);
   const accountId = Number(req.query.account_id) || (await getFirstAccountId());
-  if (accountId) {
-    try {
-      const live = await fetchStories(accountId);
-      if (live?.data?.length) return res.json({ source: 'live', data: live.data.slice(0, limit) });
-    } catch {}
-  }
   const params = [];
   let where = "media_product_type = 'STORY' AND (story_expires_at IS NULL OR story_expires_at > now())";
   if (accountId) where += ` AND account_id = $${params.push(accountId)}`;
@@ -69,9 +62,9 @@ router.get('/stories', async (req, res) => {
     params
   );
   res.json({ source: 'cache', data: rows });
-});
+}));
 
-router.get('/posts/:id', requireOwner, async (req, res) => {
+router.get('/posts/:id', requireOwner, wrap(async (req, res) => {
   const { rows } = await query('SELECT * FROM posts WHERE id = $1', [req.params.id]);
   if (!rows.length) return res.status(404).json({ error: 'Post not found' });
   const snaps = await query(
@@ -80,16 +73,16 @@ router.get('/posts/:id', requireOwner, async (req, res) => {
     [req.params.id]
   );
   res.json({ post: rows[0], snapshots: snaps.rows });
-});
+}));
 
 // ---------- Owner-only: everything account-related below ----------
 
-router.get('/accounts', requireOwner, async (_req, res) => {
+router.get('/accounts', requireOwner, wrap(async (_req, res) => {
   const accounts = await listAccounts();
   res.json({ data: accounts });
-});
+}));
 
-router.get('/stories/live', requireOwner, async (req, res) => {
+router.get('/stories/live', requireOwner, wrap(async (req, res) => {
   const accountId = Number(req.query.account_id) || (await getFirstAccountId());
   if (!accountId) return res.json({ source: 'cache', data: [] });
   // Prefer live data from Instagram; fall back to cached unexpired stories
@@ -105,9 +98,9 @@ router.get('/stories/live', requireOwner, async (req, res) => {
     );
     res.json({ source: 'cache', account_id: accountId, data: rows, note: err.message });
   }
-});
+}));
 
-router.get('/analytics/summary', requireOwner, async (req, res) => {
+router.get('/analytics/summary', requireOwner, wrap(async (req, res) => {
   const accountId = Number(req.query.account_id) || (await getFirstAccountId());
   if (!accountId) return res.json({ error: 'No accounts connected' });
   const account = await getAccount(accountId);
@@ -151,9 +144,9 @@ router.get('/analytics/summary', requireOwner, async (req, res) => {
     topPosts: topPosts.rows,
     breakdown: breakdown.rows,
   });
-});
+}));
 
-router.get('/status', requireOwner, async (_req, res) => {
+router.get('/status', requireOwner, wrap(async (_req, res) => {
   const accounts = await listAccounts();
   const lastSync = await query(`SELECT * FROM sync_log ORDER BY id DESC LIMIT 1`);
   res.json({
@@ -167,7 +160,7 @@ router.get('/status', requireOwner, async (_req, res) => {
     })),
     lastSync: lastSync.rows[0] || null,
   });
-});
+}));
 
 // ---------- Owner-only endpoints ----------
 
@@ -206,13 +199,13 @@ router.delete('/accounts/:id', requireOwner, async (req, res) => {
 
 // ---------- Comment-to-DM automation ----------
 
-router.get('/automation/rules', requireOwner, async (req, res) => {
+router.get('/automation/rules', requireOwner, wrap(async (req, res) => {
   const accountId = req.query.account_id ? Number(req.query.account_id) : null;
   const data = await listRules(accountId);
   res.json({ data });
-});
+}));
 
-router.post('/automation/rules', requireOwner, async (req, res) => {
+router.post('/automation/rules', requireOwner, wrap(async (req, res) => {
   const { accountId, name, keywords, action, messageTemplate, postId } = req.body || {};
   const resolvedAccountId = accountId ? Number(accountId) : await getFirstAccountId();
   if (!resolvedAccountId) return res.status(400).json({ error: 'No accounts connected' });
@@ -235,12 +228,12 @@ router.post('/automation/rules', requireOwner, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
-router.delete('/automation/rules/:id', requireOwner, async (req, res) => {
+router.delete('/automation/rules/:id', requireOwner, wrap(async (req, res) => {
   await deleteRule(Number(req.params.id));
   res.json({ ok: true });
-});
+}));
 
 router.post('/automation/run', requireOwner, async (req, res) => {
   try {

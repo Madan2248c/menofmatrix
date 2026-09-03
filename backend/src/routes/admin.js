@@ -6,6 +6,51 @@ const router = Router();
 router.use(requireOwner);
 const wrap = (fn) => (req, res) => fn(req, res).catch((e) => res.status(500).json({ error: e.message }));
 
+// ---------------- Feed news ----------------
+
+router.get('/news', wrap(async (_req, res) => {
+  const { rows } = await query(
+    `SELECT id, source, title, link, summary, image_url, status, is_featured, published_at, fetched_at, updated_at
+       FROM news_items ORDER BY is_featured DESC, published_at DESC NULLS LAST, id DESC`
+  );
+  res.json({ data: rows });
+}));
+
+router.post('/news', wrap(async (req, res) => {
+  const { source, title, link, summary, image_url, status = 'published', is_featured = false, published_at } = req.body || {};
+  if (!source?.trim() || !title?.trim() || !link?.trim()) {
+    return res.status(400).json({ error: 'source, title and link required' });
+  }
+  const guid = `admin:${Date.now()}:${Math.random().toString(36).slice(2, 9)}`;
+  const { rows } = await query(
+    `INSERT INTO news_items (guid, source, title, link, summary, image_url, status, is_featured, published_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+    [guid, source.trim(), title.trim(), link.trim(), summary || null, image_url || null,
+     status, !!is_featured, published_at || new Date().toISOString()]
+  );
+  res.json({ data: rows[0] });
+}));
+
+router.patch('/news/:id', wrap(async (req, res) => {
+  const f = req.body || {};
+  const { rows } = await query(
+    `UPDATE news_items SET source = COALESCE($2,source), title = COALESCE($3,title),
+            link = COALESCE($4,link), summary = COALESCE($5,summary),
+            image_url = COALESCE($6,image_url), status = COALESCE($7,status),
+            is_featured = COALESCE($8,is_featured), published_at = COALESCE($9,published_at),
+            updated_at = now() WHERE id = $1 RETURNING *`,
+    [Number(req.params.id), f.source ?? null, f.title ?? null, f.link ?? null,
+     f.summary ?? null, f.image_url ?? null, f.status ?? null,
+     typeof f.is_featured === 'boolean' ? f.is_featured : null, f.published_at ?? null]
+  );
+  res.json({ data: rows[0] });
+}));
+
+router.delete('/news/:id', wrap(async (req, res) => {
+  await query(`DELETE FROM news_items WHERE id = $1`, [Number(req.params.id)]);
+  res.json({ ok: true });
+}));
+
 // ---------------- Polls ----------------
 
 router.get('/polls', wrap(async (_req, res) => {
@@ -242,6 +287,19 @@ router.post('/media', wrap(async (req, res) => {
     `INSERT INTO media_mentions (outlet, quote, url, logo_url, published_at, sort_order)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
     [outlet, quote || null, url, logo_url || null, published_at || null, sort_order]
+  );
+  res.json({ data: rows[0] });
+}));
+
+router.patch('/media/:id', wrap(async (req, res) => {
+  const f = req.body || {};
+  const { rows } = await query(
+    `UPDATE media_mentions SET outlet = COALESCE($2,outlet), quote = COALESCE($3,quote),
+            url = COALESCE($4,url), logo_url = COALESCE($5,logo_url),
+            published_at = COALESCE($6,published_at), sort_order = COALESCE($7,sort_order)
+      WHERE id = $1 RETURNING *`,
+    [Number(req.params.id), f.outlet ?? null, f.quote ?? null, f.url ?? null,
+     f.logo_url ?? null, f.published_at ?? null, f.sort_order ?? null]
   );
   res.json({ data: rows[0] });
 }));

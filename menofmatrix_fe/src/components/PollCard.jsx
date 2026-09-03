@@ -7,16 +7,6 @@ import { SPRING } from "@/lib/motion";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600"] });
 
-const PLACEHOLDER = {
-  question: "Which AI coding tool do you reach for first?",
-  options: [
-    { id: "claude", label: "Claude Code", votes: 540 },
-    { id: "cursor", label: "Cursor", votes: 398 },
-    { id: "windsurf", label: "Windsurf", votes: 231 },
-    { id: "copilot", label: "GitHub Copilot", votes: 115 },
-  ],
-};
-
 const SHADES = [
   "rgba(234,88,12,0.92)",
   "rgba(249,115,22,0.72)",
@@ -50,11 +40,17 @@ function useCountUp(target, run) {
   return n;
 }
 
-function PollCard({ poll = PLACEHOLDER, onVoted }) {
-  const [voted, setVoted] = useState(null);
+function PollCard({ poll, onVote }) {
+  const [voted, setVoted] = useState(poll.myVote || null);
+  const [saving, setSaving] = useState(false);
   const [counts, setCounts] = useState(() =>
     Object.fromEntries(poll.options.map((o) => [o.id, o.votes || 0]))
   );
+
+  useEffect(() => {
+    setVoted(poll.myVote || null);
+    setCounts(Object.fromEntries(poll.options.map((o) => [o.id, o.votes || 0])));
+  }, [poll]);
 
   const total = useMemo(
     () => Object.values(counts).reduce((a, b) => a + b, 0),
@@ -79,15 +75,21 @@ function PollCard({ poll = PLACEHOLDER, onVoted }) {
   }, [poll.options, counts, total, voted]);
 
   const shade = (id) => SHADES[Math.min(rankById[id] ?? 3, 3)];
-  const myPct = voted
+  const myPct = voted && total
     ? Math.round(((counts[voted] ?? 0) / total) * 100)
     : 0;
 
-  function vote(id) {
-    if (voted) return;
-    setCounts((c) => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
-    setVoted(id);
-    onVoted?.(id);
+  async function vote(id) {
+    if (voted || saving || !onVote) return;
+    setSaving(true);
+    try {
+      const result = await onVote(poll.id, id);
+      if (!result) return;
+      setCounts(Object.fromEntries(result.options.map((o) => [o.id, o.votes || 0])));
+      setVoted(id);
+    } catch (err) {
+      console.error("[poll] vote failed", err);
+    } finally { setSaving(false); }
   }
   function reset() {
     setCounts(Object.fromEntries(poll.options.map((o) => [o.id, o.votes || 0])));
@@ -115,7 +117,7 @@ function PollCard({ poll = PLACEHOLDER, onVoted }) {
                   clipRule="evenodd"
                 />
               </svg>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-orange-600">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-orange-600">
                 Your voice is counted
               </span>
             </motion.div>
@@ -131,7 +133,7 @@ function PollCard({ poll = PLACEHOLDER, onVoted }) {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-70" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-500" />
               </span>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-900">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-900">
                 Community pulse
               </span>
             </motion.div>
@@ -154,7 +156,7 @@ function PollCard({ poll = PLACEHOLDER, onVoted }) {
       </div>
 
       {/* where the crowd stands — always visible */}
-      <div className="mb-1 flex items-center gap-1.5 text-[10px] font-medium text-neutral-900">
+      <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-neutral-900">
         <span className="flex -space-x-1">
           {[0, 1, 2].map((i) => (
             <span
@@ -205,7 +207,7 @@ function PollCard({ poll = PLACEHOLDER, onVoted }) {
               layout
               transition={SPRING}
               type="button"
-              disabled={!!voted}
+              disabled={!!voted || saving}
               onClick={() => vote(o.id)}
               whileHover={voted ? undefined : { y: -1 }}
               whileTap={voted ? undefined : { scale: 0.99 }}

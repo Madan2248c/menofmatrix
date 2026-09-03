@@ -1,22 +1,11 @@
 import { Router } from 'express';
-import jwt from 'jsonwebtoken';
 import 'dotenv/config';
 import { query } from '../config/db.js';
+import { requireOwner } from '../middleware/requireOwner.js';
 import { sendMail, verifySmtp, newsletterTemplate } from '../services/mailer.js';
 
 const router = Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function requireOwner(req, res, next) {
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  try {
-    jwt.verify(token || '', process.env.JWT_SECRET);
-    next();
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' });
-  }
-}
 
 /** Public: newsletter signup (+ welcome email). */
 router.post('/subscribe', async (req, res) => {
